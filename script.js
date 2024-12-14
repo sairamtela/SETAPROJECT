@@ -1,4 +1,4 @@
-//DOM Elements
+// DOM Elements
 const video = document.getElementById('video');
 const flipCameraBtn = document.getElementById('flipCamera');
 const captureButton = document.getElementById('captureButton');
