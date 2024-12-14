@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SETA - Camera App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <header>
+        <div class="header-content">
+            <h1>SETA</h1>
+            <h2>Secunderabad Electric Trade Association</h2>
+        </div>
+    </header>
+
+    <!-- Main Camera Section -->
+    <main>
+        <section id="camera-section">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <button id="flipCamera" class="flip-btn">&#8596;</button>
+            <button id="captureButton" class="capture-btn">Capture</button>
+        </section>
+    </main>
+
+    <!-- Footer Section -->
+    <footer>
+        <p>&copy; 2024 Secunderabad Electric Trade Association. All rights reserved.</p>
+    </footer>
+
+    <!-- Audio for Shutter Sound -->
+    <audio id="shutterSound" src="shutter-sound.mp3"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
