@@ -3,8 +3,9 @@ body {
     font-family: 'Arial', sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f0f8ff; /* Light blue background */
-    color: #333;
+    color: #fff; /* White text for contrast */
+    background: url('background.png') no-repeat center center fixed;
+    background-size: cover; /* Ensure the image covers the entire background */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -14,24 +15,25 @@ body {
 
 /* Header Styling */
 header {
-    background: linear-gradient(135deg, #1a73e8, #00796B); /* Gradient background from blue to teal */
-    color: #fff;
-    padding: 50px 20px;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    width: 100%;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    border-radius: 10px;
+    margin-bottom: 20px;
 }
 
 header h1 {
     font-size: 3em;
     margin: 0;
     text-transform: uppercase;
+    color: #ffd700; /* Gold color for the text to match the logo */
 }
 
 header h2 {
     margin: 10px 0;
     font-size: 1.2em;
     font-weight: 300;
+    color: #ffffff; /* White for subtitle */
 }
 
 /* Camera Section Styling */
@@ -40,6 +42,9 @@ header h2 {
     width: 100%;
     max-width: 600px;
     margin-top: 20px;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    padding: 10px;
+    border-radius: 10px;
 }
 
 /* Video Element */
@@ -90,4 +95,15 @@ header h2 {
 
 .capture-btn:hover {
     background-color: rgba(255, 255, 255, 1);
+}
+
+/* Footer Styling */
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    width: 100%;
+    position: absolute;
+    bottom: 0;
 }
