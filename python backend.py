@@ -44,6 +44,8 @@ def perform_ocr(reader, image_path):
         results = reader.readtext(image_path)
         extracted_text = "\n".join([result[1] for result in results])
         logging.info("OCR extraction completed.")
+        print("Extracted Text:")
+        print(extracted_text)
         return extracted_text
     except Exception as e:
         logging.error("Error performing OCR: %s", e)
@@ -65,6 +67,10 @@ def extract_structured_data(text):
         match = re.search(pattern, text)
         if match:
             structured_data[field] = match.group(1).strip()
+
+    print("Structured Data:")
+    for key, value in structured_data.items():
+        print(f"{key}: {value}")
 
     return structured_data
 
@@ -88,9 +94,11 @@ def create_motor_record_in_salesforce(data):
         print(f"Record created successfully. Record ID: {result['id']}")
     except Exception as e:
         logging.error(f"Error creating motor record in Salesforce: {e}")
+        if hasattr(e, 'content'):
+            print(f"Salesforce error content: {e.content}")
 
 def main():
-    image_path = "image.png"  # Replace with the path to your image
+    image_path = "/mnt/data/image.png"  # Replace with the path to your uploaded image
 
     reader = initialize_reader()
     if not reader:
@@ -107,10 +115,6 @@ def main():
     if not structured_data:
         logging.error("No structured data extracted from OCR results.")
         return
-
-    logging.info("Structured Data:")
-    for key, value in structured_data.items():
-        logging.info(f"{key}: {value}")
 
     create_motor_record_in_salesforce(structured_data)
 
