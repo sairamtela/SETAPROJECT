@@ -74,15 +74,16 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords
+// Map Extracted Text to Keywords and Add Remaining Text
 function processTextToAttributes(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
+    // Extract attributes based on keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.includes(keyword)) {
-                const value = line.split(":"[1]?.trim() || "-");
+                const value = line.split(":")[1]?.trim() || "-";
                 if (value !== "-") {
                     extractedData[keyword] = value;
                 }
@@ -90,6 +91,10 @@ function processTextToAttributes(text) {
             }
         }
     });
+
+    // Store remaining unprocessed text in "Other Specifications"
+    const remainingText = lines.filter(line => !Object.values(extractedData).includes(line)).join(" ");
+    extractedData["Other Specifications"] = remainingText.trim() || "-";
 
     allData.push(extractedData);
     displayData();
@@ -100,7 +105,7 @@ function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
-            outputDiv.innerHTML += <p><strong>${key}:</strong> ${value}</p>;
+            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
 }
@@ -108,7 +113,7 @@ function displayData() {
 // Export to Excel
 document.getElementById('exportButton').addEventListener('click', () => {
     const workbook = XLSX.utils.book_new();
-    const headers = keywords;
+    const headers = [...keywords, "Other Specifications"]; // Add "Other Specifications" at the end
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
@@ -117,4 +122,4 @@ document.getElementById('exportButton').addEventListener('click', () => {
 });
 
 // Start Camera on Load
-startCamera()
+startCamera();
