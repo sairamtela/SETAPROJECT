@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Processor with OCR</title>
+    <title>Image Capture and Preprocessing with OCR</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -26,7 +26,7 @@
             color: #00796b;
         }
 
-        .camera-container video {
+        .camera-container video, .camera-container canvas {
             width: 100%;
             max-width: 600px;
             border: 2px solid #00796b;
@@ -73,12 +73,12 @@
 </head>
 <body>
     <div class="container">
-        <h1>Image Processor with OCR</h1>
+        <h1>Image Capture and Preprocessing with OCR</h1>
 
         <!-- Camera Feed -->
         <div class="camera-container">
             <video id="camera" autoplay playsinline></video>
-            <canvas id="canvas" style="display: none;"></canvas>
+            <canvas id="canvas"></canvas>
         </div>
 
         <!-- Action Buttons -->
@@ -132,19 +132,35 @@
             startCamera();
         });
 
-        // Capture Image
+        // Capture and Preprocess Image
         document.getElementById('captureButton').addEventListener('click', () => {
             const context = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+            // Preprocess the image
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            const processedData = preprocessImage(imageData, context);
+            canvas.putImageData(processedData, 0, 0);
+
+            // Process the preprocessed image
             canvas.toBlob(blob => {
                 const img = new Image();
                 img.src = URL.createObjectURL(blob);
                 img.onload = () => processImage(img);
             }, 'image/png');
         });
+
+        // Image Preprocessing Function
+        function preprocessImage(imageData, context) {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3; // Grayscale
+                data[i] = data[i + 1] = data[i + 2] = avg > 128 ? 255 : 0; // Thresholding
+            }
+            return new ImageData(data, imageData.width, imageData.height);
+        }
 
         // Process Image with Tesseract.js
         async function processImage(img) {
@@ -163,7 +179,7 @@
             }
         }
 
-        // Map Extracted Text to Keywords and Normalize Remaining Text
+        // Map Extracted Text to Keywords
         function processTextToAttributes(text) {
             const lines = text.split("\n").filter(line => line.trim() !== "");
             extractedData = {};
@@ -181,12 +197,10 @@
                 }
             });
 
-            // Ensure all matched lines are removed from "Other Specifications"
-            const processedLines = Object.values(extractedData).map(value => value.toLowerCase());
+            // Store remaining unprocessed text
             const remainingText = lines
-                .filter(line => !processedLines.some(processedValue => line.toLowerCase().includes(processedValue)))
+                .filter(line => !Object.values(extractedData).some(value => line.includes(value)))
                 .join(" ");
-            
             extractedData["Other Specifications"] = remainingText.trim() || "-";
 
             allData.push(extractedData);
@@ -204,19 +218,14 @@
         }
 
         // Export to Excel
-        function saveToExcel(filename) {
+        document.getElementById('exportButton').addEventListener('click', () => {
             const workbook = XLSX.utils.book_new();
             const headers = [...keywords, "Other Specifications"];
             const data = allData.map(row => headers.map(key => row[key] || "-"));
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
             XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-            XLSX.writeFile(workbook, filename);
-        }
-
-        // Add Event Listeners for Save and Download Buttons
-        document.getElementById('exportButton').addEventListener('click', () => {
-            saveToExcel("Extracted_Data.xlsx");
+            XLSX.writeFile(workbook, "Extracted_Data.xlsx");
         });
 
         // Start Camera on Load
