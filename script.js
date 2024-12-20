@@ -74,15 +74,23 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords
+// Map Extracted Text to Keywords and Entire Text
 function processTextToAttributes(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
+    // Store the entire text in a new column
+    extractedData["Entire Text"] = text.trim();
+
+    // Extract Product Name (specific field)
+    let productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
+    extractedData["Product name"] = productName.split(":")[1]?.trim() || productName;
+
+    // Map other keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
-            if (line.includes(keyword)) {
-                const value = line.split(":"[1]?.trim() || "-");
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                const value = line.split(":")[1]?.trim() || "-";
                 if (value !== "-") {
                     extractedData[keyword] = value;
                 }
@@ -100,21 +108,30 @@ function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
-            outputDiv.innerHTML += <p><strong>${key}:</strong> ${value}</p>;
+            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
 }
 
 // Export to Excel
-document.getElementById('exportButton').addEventListener('click', () => {
+function saveToExcel(filename) {
     const workbook = XLSX.utils.book_new();
-    const headers = keywords;
+    const headers = [...keywords, "Entire Text"];
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+    XLSX.writeFile(workbook, filename);
+}
+
+// Add Event Listeners for Save and Download Buttons
+document.getElementById('saveButton').addEventListener('click', () => {
+    saveToExcel("Saved_Data.xlsx");
+});
+
+document.getElementById('downloadButton').addEventListener('click', () => {
+    saveToExcel("Downloaded_Data.xlsx");
 });
 
 // Start Camera on Load
-startCamera()
+startCamera();
