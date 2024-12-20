@@ -1,7 +1,6 @@
-// List of keywords to extract
 const keywords = [
     "Model Name/Number", "Type", "Motor Phase", "Head", "Power Rating",
-    "Country of Origin", "Minimum Order Quantity"
+    "Country of Origin", "Minimum Order Quantity", "Delivery Time"
 ];
 
 let currentFacingMode = "environment";
@@ -41,12 +40,7 @@ document.getElementById('captureButton').addEventListener('click', () => {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Apply preprocessing (grayscale and thresholding)
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const processedData = preprocessImage(imageData);
-    canvas.putImageData(processedData, 0, 0);
-
-    // Pass the processed image to OCR
+    // Pass the image to OCR
     canvas.toBlob(blob => {
         const img = new Image();
         img.src = URL.createObjectURL(blob);
@@ -54,23 +48,12 @@ document.getElementById('captureButton').addEventListener('click', () => {
     }, 'image/png');
 });
 
-// Preprocess the image (grayscale and thresholding)
-function preprocessImage(imageData) {
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3; // Grayscale
-        const threshold = avg > 128 ? 255 : 0; // Apply thresholding
-        data[i] = data[i + 1] = data[i + 2] = threshold; // Set RGB values
-    }
-    return new ImageData(data, imageData.width, imageData.height);
-}
-
 // Process the image with Tesseract.js
 async function processImage(img) {
     outputDiv.innerHTML = "<p>Processing...</p>";
     try {
         const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
-        console.log("Raw OCR Result:", result.data.text); // Debug raw OCR output
+        console.log("Raw OCR Result:", result.data.text); // Debug OCR output
         if (result && result.data.text) {
             processTextToAttributes(result.data.text);
         } else {
@@ -82,12 +65,11 @@ async function processImage(img) {
     }
 }
 
-// Process and map the extracted text to attributes
+// Map OCR text to attributes
 function processTextToAttributes(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
-    // Extract attributes based on keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
@@ -98,7 +80,7 @@ function processTextToAttributes(text) {
         }
     });
 
-    // Store remaining text in "Other Specifications"
+    // Store unprocessed text in "Other Specifications"
     const remainingText = lines
         .filter(line => !Object.values(extractedData).some(value => line.includes(value)))
         .join(" ");
