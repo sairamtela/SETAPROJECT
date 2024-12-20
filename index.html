@@ -3,20 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICR with Camera & Excel Export</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Image Processor with OCR</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #00796b;
+        }
+
+        .camera-container video {
+            width: 100%;
+            max-width: 600px;
+            border: 2px solid #00796b;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .button-container {
+            margin: 20px 0;
+        }
+
+        .button-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            color: #fff;
+            background-color: #00796b;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-container button:hover {
+            background-color: #004d40;
+        }
+
+        h3 {
+            margin-top: 30px;
+            color: #333;
+            text-decoration: underline;
+        }
+
+        #outputAttributes {
+            text-align: left;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>Image Text Recognition & Excel Export</h1>
-        <p>Extract text from labels and export the structured data to an Excel file.</p>
+        <h1>Image Processor with OCR</h1>
 
-        <!-- Camera and Buttons -->
+        <!-- Camera Feed -->
         <div class="camera-container">
             <video id="camera" autoplay playsinline></video>
             <canvas id="canvas" style="display: none;"></canvas>
         </div>
 
+        <!-- Action Buttons -->
         <div class="button-container">
             <button id="flipButton">Flip Camera</button>
             <button id="captureButton">Capture Image</button>
@@ -24,16 +89,138 @@
         </div>
 
         <!-- Extracted Data -->
-        <h2>Extracted Data</h2>
-        <div id="outputAttributes" class="output-container">No data extracted yet...</div>
+        <h3>Extracted Data</h3>
+        <div id="outputAttributes">No data yet...</div>
     </div>
 
-    <footer>
-        <p>Developed for Intelligent Character Recognition | © 2024</p>
-    </footer>
-
+    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="script.js"></script>
+    <script>
+        const keywords = [
+            "Model Name/Number", "Voltage", "Type Of End Use", "Motor Phase", "Brand", "Power", 
+            "Automation Grade", "Number Of Stages", "Motor Horsepower", "Usage/Application"
+        ];
+
+        let currentFacingMode = "environment";
+        let stream = null;
+        let extractedData = {};
+        let allData = [];
+
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('canvas');
+        const outputDiv = document.getElementById('outputAttributes');
+
+        // Start Camera
+        async function startCamera() {
+            try {
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+                });
+                video.srcObject = stream;
+                video.play();
+            } catch (err) {
+                alert("Camera access denied or unavailable.");
+                console.error(err);
+            }
+        }
+
+        // Flip Camera
+        document.getElementById('flipButton').addEventListener('click', () => {
+            currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+            startCamera();
+        });
+
+        // Capture Image
+        document.getElementById('captureButton').addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(blob => {
+                const img = new Image();
+                img.src = URL.createObjectURL(blob);
+                img.onload = () => processImage(img);
+            }, 'image/png');
+        });
+
+        // Process Image with Tesseract.js
+        async function processImage(img) {
+            outputDiv.innerHTML = "<p>Processing...</p>";
+            try {
+                const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+                if (result && result.data.text) {
+                    console.log("OCR Result:", result.data.text);
+                    processTextToAttributes(result.data.text);
+                } else {
+                    outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+                }
+            } catch (error) {
+                console.error("Tesseract.js Error:", error);
+                outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
+            }
+        }
+
+        // Map Extracted Text to Keywords and Normalize Remaining Text
+        function processTextToAttributes(text) {
+            const lines = text.split("\n").filter(line => line.trim() !== "");
+            extractedData = {};
+
+            // Extract fields based on keywords
+            keywords.forEach(keyword => {
+                for (let line of lines) {
+                    if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                        const value = line.split(":")[1]?.trim() || line.split(" ")[1]?.trim() || "-";
+                        if (value !== "-") {
+                            extractedData[keyword] = value;
+                        }
+                        break;
+                    }
+                }
+            });
+
+            // Ensure all matched lines are removed from "Other Specifications"
+            const processedLines = Object.values(extractedData).map(value => value.toLowerCase());
+            const remainingText = lines
+                .filter(line => !processedLines.some(processedValue => line.toLowerCase().includes(processedValue)))
+                .join(" ");
+            
+            extractedData["Other Specifications"] = remainingText.trim() || "-";
+
+            allData.push(extractedData);
+            displayData();
+        }
+
+        // Display Data
+        function displayData() {
+            outputDiv.innerHTML = "";
+            Object.entries(extractedData).forEach(([key, value]) => {
+                if (value) {
+                    outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+                }
+            });
+        }
+
+        // Export to Excel
+        function saveToExcel(filename) {
+            const workbook = XLSX.utils.book_new();
+            const headers = [...keywords, "Other Specifications"];
+            const data = allData.map(row => headers.map(key => row[key] || "-"));
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+            XLSX.writeFile(workbook, filename);
+        }
+
+        // Add Event Listeners for Save and Download Buttons
+        document.getElementById('exportButton').addEventListener('click', () => {
+            saveToExcel("Extracted_Data.xlsx");
+        });
+
+        // Start Camera on Load
+        startCamera();
+    </script>
 </body>
 </html>
