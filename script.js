@@ -65,18 +65,46 @@ document.getElementById('captureButton').addEventListener('click', () => {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob(blob => {
-        const img = new Image();
-        img.src = URL.createObjectURL(blob);
-        img.onload = () => processImage(img);
-    }, 'image/png');
+    const imageData = canvas.toDataURL("image/png");
+    preprocessImage(imageData);
 });
 
+// Preprocess Image (Grayscale and Thresholding)
+function preprocessImage(imageData) {
+    const img = new Image();
+    img.src = imageData;
+    img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Convert to grayscale
+        context.drawImage(img, 0, 0);
+        const imgData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            data[i] = avg; // Red
+            data[i + 1] = avg; // Green
+            data[i + 2] = avg; // Blue
+        }
+        context.putImageData(imgData, 0, 0);
+
+        // Apply OCR
+        processImage(canvas.toDataURL());
+    };
+}
+
 // Process Image with Tesseract.js
-async function processImage(img) {
+async function processImage(imageData) {
     outputDiv.innerHTML = "<p>Processing...</p>";
     try {
-        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+        const result = await Tesseract.recognize(imageData, 'eng', {
+            logger: m => console.log(m),
+            tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:-., "
+        });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
             processTextToAttributes(result.data.text);
@@ -94,11 +122,7 @@ function processTextToAttributes(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
-    // Identify the Product Name
-    let productName = lines.find(line => line.match(/(product name|highlight)/i)) || lines[0];
-    extractedData["Product Name"] = productName;
-
-    // Map other keywords
+    // Extract data using keyword matching
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
@@ -128,8 +152,8 @@ function displayData() {
 // Export to Excel
 document.getElementById('exportButton').addEventListener('click', () => {
     const workbook = XLSX.utils.book_new();
-    const headers = ["Product Name", ...keywords];
-    const data = allData.map(row => [row["Product Name"] || "-", ...headers.slice(1).map(key => row[key] || "-")]);
+    const headers = keywords;
+    const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
