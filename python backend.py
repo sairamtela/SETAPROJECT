@@ -1,8 +1,9 @@
-import easyocr
-import re
-import os
+from flask import Flask, request, jsonify
 from simple_salesforce import Salesforce
 import logging
+
+# Configure Flask app
+app = Flask(__name__)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,11 +21,14 @@ except Exception as e:
     logging.error(f"Error initializing Salesforce service: {e}")
     sf = None
 
-def export_to_salesforce(data):
-    """Function to export extracted data to Salesforce."""
+@app.route('/export_to_salesforce', methods=['POST'])
+def export_to_salesforce():
     if sf is None:
-        logging.error("Salesforce service is not initialized. Cannot create motor records.")
-        return
+        return jsonify({"error": "Salesforce service is not initialized"}), 500
+
+    data = request.json  # Get data from frontend
+    if not data:
+        return jsonify({"error": "No data received"}), 400
 
     try:
         # Map extracted data to Salesforce fields
@@ -66,50 +70,10 @@ def export_to_salesforce(data):
         # Create record in Salesforce
         result = sf.SETA_product_details__c.create(record)
         logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
-        print(f"Record created successfully. Record ID: {result['id']}")
+        return jsonify({"success": True, "record_id": result['id']}), 201
     except Exception as e:
         logging.error(f"Error creating motor record in Salesforce: {e}")
-        if hasattr(e, 'content'):
-            print(f"Salesforce error content: {e.content}")
+        return jsonify({"error": str(e)}), 500
 
-def process_extracted_data():
-    """Simulated function to process extracted data."""
-    # Example data extracted from UI
-    extracted_data = {
-        'Brand': 'BrandName',
-        'Colour': 'Red',
-        'Company Name': 'Company ABC',
-        'Customer Care Number': '1234567890',
-        'Frequency': '50 Hz',
-        'Gross Weight': '500 KG',
-        'GSTIN': '27AABCU9603R1ZN',
-        'Head Size': 'Large',
-        'Height': '180 CM',
-        'Horse Power': '5 HP',
-        'Manufacture Date': '2023-12-01',
-        'Material': 'Steel',
-        'Model': 'Model123',
-        'Motor Frame': 'Frame456',
-        'Motor Type': 'Type789',
-        'MRP': '20000',
-        'Other Specifications': 'Special Features',
-        'Phase': 'Single Phase',
-        'Product Name': 'Motor XYZ',
-        'Quantity': '10',
-        'Ratio': '1:5',
-        'Record Type ID': '0123A000000LMNOP',
-        'Seller Address': '123 Main Street',
-        'Serial Number': 'SN987654321',
-        'Speed': '1600 RPM',
-        'Stage': 'Stage 1',
-        'Total Amount': '50000',
-        'Usage/Application': 'Industrial',
-        'Voltage': '220V',
-        'Weight': '50 KG',
-    }
-
-    # Export to Salesforce
-    export_to_salesforce(extracted_data)
-
-if __name__ == "__main__":
-    process_extracted_data()
+if __name__ == '__main__':
+    app.run(debug=True)
