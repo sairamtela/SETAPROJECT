@@ -1,109 +1,71 @@
-/* Global Styles */
 body {
     font-family: 'Arial', sans-serif;
     margin: 0;
     padding: 0;
-    color: #fff; /* White text for contrast */
-    background: url('background.png') no-repeat center center fixed;
-    background-size: cover; /* Ensure the image covers the entire background */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh; /* Full viewport height */
+    text-align: center;
+    background-color: #f3f4f6;
+    color: #333;
 }
 
-/* Header Styling */
-header {
-    text-align: center;
+.container {
+    margin: 20px auto;
     padding: 20px;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    background: linear-gradient(to bottom, #ffffff, #f0f0f0);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     border-radius: 10px;
-    margin-bottom: 20px;
+    max-width: 700px;
 }
 
-header h1 {
-    font-size: 3em;
-    margin: 0;
-    text-transform: uppercase;
-    color: #ffd700; /* Gold color for the text to match the logo */
+h1 {
+    font-size: 24px;
+    color: #00796b;
+    margin-bottom: 10px;
 }
 
-header h2 {
-    margin: 10px 0;
-    font-size: 1.2em;
-    font-weight: 300;
-    color: #ffffff; /* White for subtitle */
+p {
+    font-size: 14px;
+    color: #555;
 }
 
-/* Camera Section Styling */
-#camera-section {
-    position: relative;
+.camera-container video {
     width: 100%;
-    max-width: 600px;
-    margin-top: 20px;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    padding: 10px;
+    border: 2px solid #00796b;
     border-radius: 10px;
+    margin-bottom: 10px;
 }
 
-/* Video Element */
-#video {
-    width: 100%;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-/* Flip Button */
-.flip-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: rgba(255, 255, 255, 0.8);
-    border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 1.2em;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-}
-
-.flip-btn:hover {
-    background-color: rgba(255, 255, 255, 1);
-}
-
-/* Capture Button */
-.capture-btn {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(255, 255, 255, 0.8);
-    border: none;
-    border-radius: 50px;
+button {
     padding: 10px 20px;
-    font-size: 1.2em;
-    cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-}
-
-.capture-btn:hover {
-    background-color: rgba(255, 255, 255, 1);
-}
-
-/* Footer Styling */
-footer {
-    text-align: center;
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
+    font-size: 16px;
+    margin: 10px;
+    background-color: #00796b;
     color: #fff;
-    width: 100%;
-    position: absolute;
-    bottom: 0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #004d40;
+}
+
+h2 {
+    margin-top: 20px;
+    color: #333;
+}
+
+.output-container {
+    text-align: left;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+footer {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #888;
 }
