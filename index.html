@@ -4,222 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ICR with Camera & Excel Export</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            color: #00796b;
-        }
-
-        .camera-container video {
-            width: 100%;
-            max-width: 600px;
-            border: 2px solid #00796b;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .button-container {
-            margin: 20px 0;
-        }
-
-        .button-container button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 10px;
-            color: #fff;
-            background-color: #00796b;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .button-container button:hover {
-            background-color: #004d40;
-        }
-
-        h3 {
-            margin-top: 30px;
-            color: #333;
-            text-decoration: underline;
-        }
-
-        #outputAttributes {
-            text-align: left;
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>ICR with Camera Flip & Excel Export</h1>
+        <h1>Image Text Recognition & Excel Export</h1>
+        <p>Extract text from labels and export the structured data to an Excel file.</p>
 
-        <!-- Camera Feed -->
+        <!-- Camera and Buttons -->
         <div class="camera-container">
             <video id="camera" autoplay playsinline></video>
             <canvas id="canvas" style="display: none;"></canvas>
         </div>
 
-        <!-- Action Buttons -->
         <div class="button-container">
             <button id="flipButton">Flip Camera</button>
             <button id="captureButton">Capture Image</button>
-            <button id="saveButton">Save to Excel</button>
-            <button id="downloadButton">Download Excel</button>
+            <button id="exportButton">Export to Excel</button>
         </div>
 
         <!-- Extracted Data -->
-        <h3>Extracted Data</h3>
-        <div id="outputAttributes">No data yet...</div>
+        <h2>Extracted Data</h2>
+        <div id="outputAttributes" class="output-container">No data extracted yet...</div>
     </div>
 
-    <!-- External Scripts -->
+    <footer>
+        <p>Developed for Intelligent Character Recognition | © 2024</p>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script>
-        const keywords = [
-            "Model Name/Number", "Power", "Brand", "Motor Phase", "Type Of End Use", "Automation Grade",
-            "Voltage", "Frequency", "Engine Cooling", "Price", "Other Specifications"
-        ];
-
-        let currentFacingMode = "environment";
-        let stream = null;
-        let extractedData = {};
-        let allData = [];
-
-        const video = document.getElementById('camera');
-        const canvas = document.getElementById('canvas');
-        const outputDiv = document.getElementById('outputAttributes');
-
-        // Start Camera
-        async function startCamera() {
-            try {
-                if (stream) stream.getTracks().forEach(track => track.stop());
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: currentFacingMode, width: 1280, height: 720 }
-                });
-                video.srcObject = stream;
-                video.play();
-            } catch (err) {
-                alert("Camera access denied or unavailable.");
-                console.error(err);
-            }
-        }
-
-        // Flip Camera
-        document.getElementById('flipButton').addEventListener('click', () => {
-            currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-            startCamera();
-        });
-
-        // Capture Image
-        document.getElementById('captureButton').addEventListener('click', () => {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            canvas.toBlob(blob => {
-                const img = new Image();
-                img.src = URL.createObjectURL(blob);
-                img.onload = () => processImage(img);
-            }, 'image/png');
-        });
-
-        // Process Image with Tesseract.js
-        async function processImage(img) {
-            outputDiv.innerHTML = "<p>Processing...</p>";
-            try {
-                const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
-                if (result && result.data.text) {
-                    console.log("OCR Result:", result.data.text);
-                    processTextToAttributes(result.data.text);
-                } else {
-                    outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
-                }
-            } catch (error) {
-                console.error("Tesseract.js Error:", error);
-                outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
-            }
-        }
-
-        // Map Extracted Text to Keywords
-        function processTextToAttributes(text) {
-            const lines = text.split("\n").filter(line => line.trim() !== "");
-            extractedData = {};
-
-            // Map attributes dynamically based on keywords
-            keywords.forEach(keyword => {
-                for (let line of lines) {
-                    if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                        const value = line.split(":")[1]?.trim() || line.split(" ")[1]?.trim() || "-";
-                        extractedData[keyword] = value;
-                        break;
-                    }
-                }
-            });
-
-            // Store remaining unprocessed text in "Other Specifications"
-            const remainingText = lines.filter(line => !Object.values(extractedData).includes(line)).join(" ");
-            extractedData["Other Specifications"] = remainingText.trim() || "-";
-
-            allData.push(extractedData);
-            displayData();
-        }
-
-        // Display Data
-        function displayData() {
-            outputDiv.innerHTML = "";
-            Object.entries(extractedData).forEach(([key, value]) => {
-                if (value) {
-                    outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-                }
-            });
-        }
-
-        // Export to Excel
-        function saveToExcel(filename) {
-            const workbook = XLSX.utils.book_new();
-            const headers = [...keywords];
-            const data = allData.map(row => headers.map(key => row[key] || "-"));
-            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-            XLSX.writeFile(workbook, filename);
-        }
-
-        // Add Event Listeners for Save and Download Buttons
-        document.getElementById('saveButton').addEventListener('click', () => {
-            saveToExcel("Saved_Data.xlsx");
-        });
-
-        document.getElementById('downloadButton').addEventListener('click', () => {
-            saveToExcel("Downloaded_Data.xlsx");
-        });
-
-        // Start Camera on Load
-        startCamera();
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
