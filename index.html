@@ -3,19 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICR with Camera & Excel Export</title>
+    <title>ICR with Camera Flip & Server</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Image Text Recognition & Excel Export</h1>
-        <p>Extract text from labels and export the structured data to an Excel file.</p>
+        <h1>ICR with Camera Flip & Excel Export</h1>
 
-        <!-- Camera and Buttons -->
-        <div class="camera-container">
-            <video id="camera" autoplay playsinline></video>
-            <canvas id="canvas" style="display: none;"></canvas>
-        </div>
+        <!-- Video Feed and Buttons -->
+        <video id="camera" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
 
         <div class="button-container">
             <button id="flipButton">Flip Camera</button>
@@ -24,13 +21,9 @@
         </div>
 
         <!-- Extracted Data -->
-        <h2>Extracted Data</h2>
-        <div id="outputAttributes" class="output-container">No data extracted yet...</div>
+        <h3>Extracted Data</h3>
+        <div id="outputAttributes">No data yet...</div>
     </div>
-
-    <footer>
-        <p>Developed for Intelligent Character Recognition | © 2024</p>
-    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
