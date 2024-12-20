@@ -1,6 +1,8 @@
 const keywords = [
-    "Model Name/Number", "Power", "Brand", "Motor Phase", "Type Of End Use", "Automation Grade",
-    "Voltage", "Frequency", "Engine Cooling", "Price", "Serial Number", "Gross Weight", "Usage/Application"
+    "Model Name/Number", "Power", "Brand", "Motor Phase", "Type Of End Use", 
+    "Automation Grade", "Voltage", "Frequency", "Engine Cooling", "Price",
+    "Serial Number", "Gross Weight", "Usage/Application", "Motor Horsepower", 
+    "Number Of Stages"
 ];
 
 let currentFacingMode = "environment";
@@ -64,12 +66,12 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords
+// Map Extracted Text to Keywords and Store Remaining Text
 function processTextToAttributes(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
-    // Extract attributes dynamically
+    // Extract fields based on keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
@@ -83,7 +85,10 @@ function processTextToAttributes(text) {
     });
 
     // Store remaining unprocessed text in "Other Specifications"
-    const remainingText = lines.filter(line => !Object.values(extractedData).includes(line)).join(" ");
+    const remainingText = lines.filter(line => {
+        return !Object.values(extractedData).some(extractedValue => line.includes(extractedValue));
+    }).join(" ");
+
     extractedData["Other Specifications"] = remainingText.trim() || "-";
 
     allData.push(extractedData);
