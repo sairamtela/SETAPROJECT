@@ -24,12 +24,14 @@ except Exception as e:
 @app.route('/export_to_salesforce', methods=['POST'])
 def export_to_salesforce():
     if sf is None:
+        logging.error("Salesforce service is not initialized.")
         return jsonify({"error": "Salesforce service is not initialized"}), 500
 
     data = request.json  # Get data from frontend
-    print("Received data from frontend:", data)
+    logging.info(f"Received data from frontend: {data}")
 
     if not data:
+        logging.error("No data received from the frontend.")
         return jsonify({"error": "No data received"}), 400
 
     try:
@@ -68,14 +70,14 @@ def export_to_salesforce():
             'Weight__c': data.get('Weight'),
         }
 
-        print("Data being sent to Salesforce:", record)  # Debugging output
+        logging.info(f"Data being sent to Salesforce: {record}")
 
         # Create record in Salesforce
         result = sf.SETA_product_details__c.create(record)
-        logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
+        logging.info(f"Record created successfully in Salesforce with ID: {result['id']}")
         return jsonify({"success": True, "record_id": result['id']}), 201
     except Exception as e:
-        logging.error(f"Error creating motor record in Salesforce: {e}")
+        logging.error(f"Error creating record in Salesforce: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
