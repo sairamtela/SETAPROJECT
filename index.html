@@ -4,14 +4,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ICR with Camera & Excel Export</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #00796b;
+        }
+
+        .camera-container video {
+            width: 100%;
+            max-width: 600px;
+            border: 2px solid #00796b;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .button-container {
+            margin: 20px 0;
+        }
+
+        .button-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            color: #fff;
+            background-color: #00796b;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .button-container button:hover {
+            background-color: #004d40;
+        }
+
+        h3 {
+            margin-top: 30px;
+            color: #333;
+            text-decoration: underline;
+        }
+
+        #outputAttributes {
+            text-align: left;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>ICR with Camera Flip & Excel Export</h1>
-        <p>Extract structured data from images and export it to Excel.</p>
 
-        <!-- Camera and Video Feed -->
+        <!-- Camera Feed -->
         <div class="camera-container">
             <video id="camera" autoplay playsinline></video>
             <canvas id="canvas" style="display: none;"></canvas>
@@ -33,21 +97,10 @@
     <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- Main JavaScript Code -->
     <script>
         const keywords = [
-            "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-            "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-            "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-            "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-            "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-            "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-            "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-            "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-            "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-            "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-            "frame"
+            "Model Name/Number", "Power", "Brand", "Motor Phase", "Type Of End Use", "Automation Grade",
+            "Voltage", "Frequency", "Engine Cooling", "Price", "Other Specifications"
         ];
 
         let currentFacingMode = "environment";
@@ -111,30 +164,25 @@
             }
         }
 
-        // Map Extracted Text to Keywords and Entire Text
+        // Map Extracted Text to Keywords
         function processTextToAttributes(text) {
             const lines = text.split("\n").filter(line => line.trim() !== "");
             extractedData = {};
 
-            // Store the entire text
-            extractedData["Entire Text"] = text.trim();
-
-            // Extract Product Name
-            let productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
-            extractedData["Product name"] = productName.split(":")[1]?.trim() || productName;
-
-            // Map other keywords
+            // Map attributes dynamically based on keywords
             keywords.forEach(keyword => {
                 for (let line of lines) {
                     if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                        const value = line.split(":")[1]?.trim() || "-";
-                        if (value !== "-") {
-                            extractedData[keyword] = value;
-                        }
+                        const value = line.split(":")[1]?.trim() || line.split(" ")[1]?.trim() || "-";
+                        extractedData[keyword] = value;
                         break;
                     }
                 }
             });
+
+            // Store remaining unprocessed text in "Other Specifications"
+            const remainingText = lines.filter(line => !Object.values(extractedData).includes(line)).join(" ");
+            extractedData["Other Specifications"] = remainingText.trim() || "-";
 
             allData.push(extractedData);
             displayData();
@@ -153,7 +201,7 @@
         // Export to Excel
         function saveToExcel(filename) {
             const workbook = XLSX.utils.book_new();
-            const headers = [...keywords, "Entire Text"];
+            const headers = [...keywords];
             const data = allData.map(row => headers.map(key => row[key] || "-"));
             const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
