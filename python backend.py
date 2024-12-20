@@ -1,109 +1,117 @@
 import easyocr
 import re
 import os
+from simple_salesforce import Salesforce
+import logging
 
-# Initialize EasyOCR Reader
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Salesforce credentials
+SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
+SF_PASSWORD = 'Sairam12345@'
+SF_SECURITY_TOKEN = 'Iy4DWr8USHwJFf8h2EzPDM1Y'  # Replace with your security token
+
+# Initialize Salesforce connection
+try:
+    sf = Salesforce(username=SF_USERNAME, password=SF_PASSWORD, security_token=SF_SECURITY_TOKEN)
+    logging.info("Salesforce service initialized successfully.")
+except Exception as e:
+    logging.error(f"Error initializing Salesforce service: {e}")
+    sf = None
+
 def initialize_reader():
     try:
-        reader = easyocr.Reader(['en'], gpu=False)
+        reader = easyocr.Reader(['en'])
         return reader
     except Exception as e:
-        print("Error initializing EasyOCR Reader:", e)
+        logging.error("Error initializing EasyOCR Reader: %s", e)
         return None
 
-# Load and Process the Image
 def load_image(image_path):
     if not os.path.exists(image_path):
-        print(f"Error: The image path '{image_path}' does not exist.")
+        logging.error(f"The image path '{image_path}' does not exist.")
         return None
     try:
-        print(f"Loading image from: {image_path}")
+        logging.info(f"Loading image from: {image_path}")
         return image_path
     except Exception as e:
-        print("Error loading image:", e)
+        logging.error("Error loading image: %s", e)
         return None
 
-# Perform OCR on the Image
 def perform_ocr(reader, image_path):
     try:
         results = reader.readtext(image_path)
         extracted_text = "\n".join([result[1] for result in results])
-        print("\nFull Extracted Text:")
-        print(extracted_text)
+        logging.info("OCR extraction completed.")
         return extracted_text
     except Exception as e:
-        print("Error performing OCR:", e)
+        logging.error("Error performing OCR: %s", e)
         return ""
 
-# Function to Extract Structured Data
 def extract_structured_data(text):
     structured_data = {}
-    lines = text.split("\n")
-
-    # Assign the first line as the Product Name if it exists
-    if lines:
-        structured_data["Product Name"] = lines[0].strip()
-
-    # Patterns for extracting specific fields
     patterns = {
-        "Company Name": r"(?i)Company Name\s*[:;-]?\s*(.*)",
-        "Address": r"(?i)Address\s*[:;-]?\s*(.*)",
-        "Phone": r"(?i)(Phone|Contact)\s*[:;-]?\s*(\+?\d{10,15})",
-        "GSTIN": r"(?i)GSTIN\s*[:;-]?\s*([A-Z0-9]+)",
-        "PAN Number": r"(?i)PAN\s*Number\s*[:;-]?\s*([A-Z]{5}[0-9]{4}[A-Z])",
-        "Invoice Number": r"(?i)Invoice\s*Number\s*[:;-]?\s*(\d+)",
-        "Invoice Date": r"(?i)Invoice\s*Date\s*[:;-]?\s*(.*)",
-        "Model": r"(?i)Model\s*[:;-]?\s*(.*)",
-        "Power Rating": r"(?i)Power Rating\s*[:;-]?\s*(.*)",
-        "Motor Phase": r"(?i)Motor Phase\s*[:;-]?\s*(.*)",
-        "Country of Origin": r"(?i)Country of Origin\s*[:;-]?\s*(.*)",
-        "Minimum Order Quantity": r"(?i)Minimum Order Quantity\s*[:;-]?\s*(.*)",
+        "Model": r"Model\s*[:;-]\s*(.*?)\s*kW",
+        "Voltage": r"Voltage\s*[:;-]\s*(.*?)\s*V",
+        "End Use": r"End\s*Use\s*[:;-]\s*(.*?)(?=\n)",
+        "Motor Phase": r"Phase\s*[:;-]\s*(\w+)",
+        "Brand": r"Brand\s*[:;-]\s*(.*?)\n",
+        "Power": r"Power\s*[:;-]\s*(\d+HP)",
+        "Specifications": r"Specifications\s*[:;-]\s*(.*?)(?=\n)"
     }
 
-    # Extract data based on patterns
     for field, pattern in patterns.items():
         match = re.search(pattern, text)
         if match:
             structured_data[field] = match.group(1).strip()
 
-    # Add remaining text to "Other Specifications"
-    remaining_text = "\n".join(lines)
-    structured_data["Other Specifications"] = remaining_text.strip()
-
     return structured_data
 
-# Main Execution
+def create_motor_record_in_salesforce(data):
+    if sf is None:
+        logging.error("Salesforce service is not initialized. Cannot create motor records.")
+        return
+
+    try:
+        record = {
+            'Model__c': data.get('Model'),
+            'Voltage__c': data.get('Voltage'),
+            'Type_of_End_Use__c': data.get('End Use'),
+            'Motor_Phase__c': data.get('Motor Phase'),
+            'Brand__c': data.get('Brand'),
+            'Power__c': data.get('Power'),
+            'Other_Specifications__c': data.get('Specifications')
+        }
+        result = sf.ElectricMotor__c.create(record)
+        logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
+    except Exception as e:
+        logging.error(f"Error creating motor record in Salesforce: {e}")
+
 def main():
-    # Path to the image
     image_path = "image.png"  # Replace with the path to your image
 
-    # Initialize EasyOCR Reader
     reader = initialize_reader()
     if not reader:
         return
 
-    # Load the Image
-    loaded_image = load_image(image_path)
-    if not loaded_image:
+    if not load_image(image_path):
         return
 
-    # Perform OCR
-    extracted_text = perform_ocr(reader, loaded_image)
-    if not extracted_text.strip():
-        print("No text detected!")
+    extracted_text = perform_ocr(reader, image_path)
+    if not extracted_text:
         return
 
-    # Extract Structured Data
     structured_data = extract_structured_data(extracted_text)
+    if not structured_data:
+        logging.error("No structured data extracted from OCR results.")
+        return
 
-    # Print Structured Data
-    print("\nStructured Data:")
-    if structured_data:
-        for key, value in structured_data.items():
-            print(f"{key}: {value}")
-    else:
-        print("No valid data found in the extracted text.")
+    logging.info("Structured Data:")
+    for key, value in structured_data.items():
+        logging.info(f"{key}: {value}")
 
-# Run the Script
+    create_motor_record_in_salesforce(structured_data)
+
 if __name__ == "__main__":
     main()
