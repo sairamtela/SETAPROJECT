@@ -1,6 +1,7 @@
 import easyocr
 import re
 import os
+import pandas as pd
 from simple_salesforce import Salesforce
 import logging
 
@@ -44,8 +45,7 @@ def perform_ocr(reader, image_path):
         results = reader.readtext(image_path)
         extracted_text = "\n".join([result[1] for result in results])
         logging.info("OCR extraction completed.")
-        print("Extracted Text:")
-        print(extracted_text)
+        print("OCR Extracted Text:", extracted_text)
         return extracted_text
     except Exception as e:
         logging.error("Error performing OCR: %s", e)
@@ -54,13 +54,15 @@ def perform_ocr(reader, image_path):
 def extract_structured_data(text):
     structured_data = {}
     patterns = {
-        "Brand": r"Brand\s*[:;-]\s*(.*?)\s*$",
+        "Name": r"Name\s*[:;-]\s*(.*?)\s*$",
+        "Speed": r"Speed\s*[:;-]\s*(.*?)\s*$",
+        "Stage": r"Stage\s*[:;-]\s*(.*?)\s*$",
+        "Total Amount": r"Total Amount\s*[:;-]\s*(.*?)\s*$",
+        "Usage/Application": r"Usage/Application\s*[:;-]\s*(.*?)\s*$",
         "Voltage": r"Voltage\s*[:;-]\s*(.*?)\s*V",
-        "Horse Power": r"Horse Power\s*[:;-]\s*(\d+HP)",
-        "Serial Number": r"Serial Number\s*[:;-]\s*(.*?)\s*$",
-        "Phase": r"Phase\s*[:;-]\s*(\w+)",
         "Weight": r"Weight\s*[:;-]\s*(.*?)\s*$",
-        "Height": r"Height\s*[:;-]\s*(\d+\.\d+)"
+        "Serial Number": r"Serial Number\s*[:;-]\s*(.*?)\s*$",
+        "Seller Address": r"Seller Address\s*[:;-]\s*(.*?)\s*$"
     }
 
     for field, pattern in patterns.items():
@@ -68,30 +70,40 @@ def extract_structured_data(text):
         if match:
             structured_data[field] = match.group(1).strip()
 
-    print("Structured Data:")
-    for key, value in structured_data.items():
-        print(f"{key}: {value}")
-
+    print("Structured Data Extracted:", structured_data)
     return structured_data
 
-def create_motor_record_in_salesforce(data):
+def save_to_excel(data, file_name="extracted_data.xlsx"):
+    try:
+        df = pd.DataFrame([data])
+        df.to_excel(file_name, index=False)
+        logging.info(f"Data saved to Excel file: {file_name}")
+        print(f"Data saved to Excel: {file_name}")
+    except Exception as e:
+        logging.error(f"Error saving data to Excel: {e}")
+
+def read_excel_and_export_to_salesforce(file_name="extracted_data.xlsx"):
     if sf is None:
         logging.error("Salesforce service is not initialized. Cannot create motor records.")
         return
 
     try:
-        record = {
-            'Brand__c': data.get('Brand'),
-            'Voltage__c': data.get('Voltage'),
-            'Horse_power__c': data.get('Horse Power'),
-            'Serial_number__c': data.get('Serial Number'),
-            'Phase__c': data.get('Phase'),
-            'Weight__c': data.get('Weight'),
-            'Height__c': data.get('Height')
-        }
-        result = sf.SETA_product_details__c.create(record)
-        logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
-        print(f"Record created successfully. Record ID: {result['id']}")
+        df = pd.read_excel(file_name)
+        for index, row in df.iterrows():
+            record = {
+                'Name': row.get('Name'),
+                'Speed__c': row.get('Speed'),
+                'Stage__c': row.get('Stage'),
+                'Total_amount__c': row.get('Total Amount'),
+                'Usage_Application__c': row.get('Usage/Application'),
+                'Voltage__c': row.get('Voltage'),
+                'Weight__c': row.get('Weight'),
+                'Serial_number__c': row.get('Serial Number'),
+                'Seller_Address__c': row.get('Seller Address')
+            }
+            result = sf.SETA_product_details__c.create(record)
+            logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
+            print(f"Record created successfully. Record ID: {result['id']}")
     except Exception as e:
         logging.error(f"Error creating motor record in Salesforce: {e}")
         if hasattr(e, 'content'):
@@ -116,7 +128,9 @@ def main():
         logging.error("No structured data extracted from OCR results.")
         return
 
-    create_motor_record_in_salesforce(structured_data)
+    save_to_excel(structured_data)
+    # Call the export function to upload data from Excel to Salesforce
+    read_excel_and_export_to_salesforce()
 
 if __name__ == "__main__":
     main()
