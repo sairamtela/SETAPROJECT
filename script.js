@@ -43,23 +43,14 @@ document.getElementById('flipButton').addEventListener('click', () => {
     startCamera();
 });
 
-// Capture Image and Extract Product Name
+// Capture Image
 document.getElementById('captureButton').addEventListener('click', () => {
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Crop the bottom section of the image
-    const croppedCanvas = document.createElement("canvas");
-    const croppedContext = croppedCanvas.getContext("2d");
-    const cropHeight = Math.floor(canvas.height * 0.2); // Bottom 20% of the image
-    croppedCanvas.width = canvas.width;
-    croppedCanvas.height = cropHeight;
-
-    croppedContext.drawImage(canvas, 0, canvas.height - cropHeight, canvas.width, cropHeight, 0, 0, canvas.width, cropHeight);
-
-    croppedCanvas.toBlob(blob => {
+    canvas.toBlob(blob => {
         const img = new Image();
         img.src = URL.createObjectURL(blob);
         img.onload = () => processImage(img);
@@ -73,7 +64,7 @@ async function processImage(img) {
         const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            extractProductName(result.data.text);
+            processTextToAttributes(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
@@ -83,35 +74,47 @@ async function processImage(img) {
     }
 }
 
-// Extract Product Name
-function extractProductName(text) {
-    const lines = text.split("\n").filter(line => line.trim() !== "");
-    const productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
-    extractedData["Product Name"] = productName.trim();
+// Map Extracted Text to Keywords
+function processTextToAttributes(text) {
+    const lines = text.split("\n");
+    extractedData = {};
 
-    // Display Extracted Product Name
-    outputDiv.innerHTML = `<p><strong>Product Name:</strong> ${extractedData["Product Name"]}</p>`;
+    keywords.forEach(keyword => {
+        for (let line of lines) {
+            if (line.includes(keyword)) {
+                const value = line.split(":"[1]?.trim() || "-");
+                if (value !== "-") {
+                    extractedData[keyword] = value;
+                }
+                break;
+            }
+        }
+    });
+
+    allData.push(extractedData);
+    displayData();
+}
+
+// Display Data
+function displayData() {
+    outputDiv.innerHTML = "";
+    Object.entries(extractedData).forEach(([key, value]) => {
+        if (value) {
+            outputDiv.innerHTML += <p><strong>${key}:</strong> ${value}</p>;
+        }
+    });
 }
 
 // Export to Excel
-function saveToExcel(filename) {
+document.getElementById('exportButton').addEventListener('click', () => {
     const workbook = XLSX.utils.book_new();
-    const headers = ["Product Name", ...keywords.filter(k => k !== "Product Name")];
+    const headers = keywords;
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, filename);
-}
-
-// Add Event Listeners for Save and Download Buttons
-document.getElementById('saveButton').addEventListener('click', () => {
-    saveToExcel("Saved_Data.xlsx");
-});
-
-document.getElementById('downloadButton').addEventListener('click', () => {
-    saveToExcel("Downloaded_Data.xlsx");
+    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
 });
 
 // Start Camera on Load
-startCamera();
+startCamera()
