@@ -1,15 +1,6 @@
 const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame", 
+    "Model Name/Number", "Power", "Brand", "Motor Phase", "Type Of End Use", "Automation Grade",
+    "Voltage", "Frequency", "Engine Cooling", "Price", "Serial Number", "Gross Weight", "Usage/Application"
 ];
 
 let currentFacingMode = "environment";
@@ -17,7 +8,6 @@ let stream = null;
 let extractedData = {};
 let allData = [];
 
-// Elements
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const outputDiv = document.getElementById('outputAttributes');
@@ -74,16 +64,16 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords and Add Remaining Text
+// Map Extracted Text to Keywords
 function processTextToAttributes(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
-    // Extract attributes based on keywords
+    // Extract attributes dynamically
     keywords.forEach(keyword => {
         for (let line of lines) {
-            if (line.includes(keyword)) {
-                const value = line.split(":")[1]?.trim() || "-";
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                const value = line.split(":")[1]?.trim() || line.split(" ")[1]?.trim() || "-";
                 if (value !== "-") {
                     extractedData[keyword] = value;
                 }
@@ -111,14 +101,23 @@ function displayData() {
 }
 
 // Export to Excel
-document.getElementById('exportButton').addEventListener('click', () => {
+function saveToExcel(filename) {
     const workbook = XLSX.utils.book_new();
-    const headers = [...keywords, "Other Specifications"]; // Add "Other Specifications" at the end
+    const headers = [...keywords, "Other Specifications"];
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+    XLSX.writeFile(workbook, filename);
+}
+
+// Add Event Listeners for Save and Download Buttons
+document.getElementById('saveButton').addEventListener('click', () => {
+    saveToExcel("Saved_Data.xlsx");
+});
+
+document.getElementById('downloadButton').addEventListener('click', () => {
+    saveToExcel("Downloaded_Data.xlsx");
 });
 
 // Start Camera on Load
