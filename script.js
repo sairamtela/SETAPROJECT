@@ -43,7 +43,7 @@ document.getElementById('flipButton').addEventListener('click', () => {
     startCamera();
 });
 
-// Capture Image
+// Capture Image and Extract Product Name
 document.getElementById('captureButton').addEventListener('click', () => {
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
@@ -74,14 +74,17 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords
+// Map Extracted Text to Keywords and Entire Data
 function processTextToAttributes(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
+    // Store entire extracted text
+    extractedData["Entire Extracted Data"] = text.trim();
+
     // Extract Product Name (specific field)
     let productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
-    extractedData["Product name"] = productName.split(":")[1]?.trim() || productName;
+    extractedData["Product Name"] = productName.split(":")[1]?.trim() || productName;
 
     // Map other keywords
     keywords.forEach(keyword => {
@@ -113,7 +116,7 @@ function displayData() {
 // Export to Excel
 function saveToExcel(filename) {
     const workbook = XLSX.utils.book_new();
-    const headers = ["Product name", ...keywords.filter(k => k !== "Product name")];
+    const headers = ["Entire Extracted Data", "Product Name", ...keywords.filter(k => k !== "Product Name")];
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
