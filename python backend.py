@@ -45,7 +45,24 @@ def extract_structured_data(text):
         "GSTIN": r"(?i)(GSTIN):\s*([A-Z0-9]+)",
         "PAN Number": r"(?i)(PAN\s*Number|PAN):\s*([A-Z]{5}[0-9]{4}[A-Z])",
         "Invoice Number": r"(?i)(Invoice\s*Number|Invoice No):\s*(\d+)",
-        "Invoice Date": r"(?i)(Invoice\s*Date|Date):\s*(.*)"
+        "Invoice Date": r"(?i)(Invoice\s*Date|Date):\s*(.*)",
+        "Product Name": r"Product\s*[:;-]\s*(.*?)(?=\||Total|\n)",
+        "Model": r"Model\s*[:;-]\s*(.*?)\s*kW",
+        "kW / HP": r"kW\s*/\s*HP\s*:\s*([\d./]+)",
+        "Phase": r"Phase\s*:\s*(\w+)",
+        "Speed": r"Speed\s*:\s*(\d+\s*RPM)",
+        "Net Quantity": r"Net\s*Quantity\s*:\s*(\S+)",
+        "Gross Weight": r"Gross\s*Weight\s*:\s*([\d.]+\s*\w+)",
+        "Month & Year of MFG": r"Month\s*&\s*Year\s*of\s*MFG\s*:\s*(\w+\s*\d+)",
+        "MRP": r"MRP.*?([\d.,]+\s*\(Inclusive\s*of\s*.*?\))",
+        "Serial No.": r"Serial\s*No\s*[:;-]\s*(.*?)\|",
+        "Manufacturer": r"Sold\s*By\s*[:;-]\s*(.*?)(?=,|\n)",
+        "Delivery Address": r"DELIVERY\s*ADDRESS[:;-]\s*(.*?)(?=\s*Courler|\n)",
+        "Customer Care": r"Customer\s*Care\s*[:;-]\s*(\+?\d+)",
+        "Email": r"Email\s*[:;-]\s*(\S+)",
+        "Name": r"Name\s*[:;-]\s*(.*?)(?=Model|Date|$)",
+        "Date": r"Date\s*[:;-]\s*([0-9-/]+)",
+        "Tracking ID": r"Courler\s*AWB\s*No\s*[:;-]\s*(\S+)",
     }
 
     for field, pattern in patterns.items():
