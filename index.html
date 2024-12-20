@@ -3,209 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hardware Shop - SETA Scanner</title>
-    <style>
-        /* Global Styles */
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #fff;
-            background: url('hardware-background.jpg') no-repeat center center fixed;
-            background-size: cover;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        /* Header Section */
-        header {
-            text-align: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #ffd700;
-            border-bottom: 5px solid #ffcc00;
-            width: 100%;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        }
-
-        header h1 {
-            font-size: 3em;
-            margin: 0;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        header h2 {
-            font-size: 1.2em;
-            margin: 5px 0;
-            color: #ffcc00;
-        }
-
-        /* Camera Section */
-        #camera-section {
-            margin-top: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            padding: 20px;
-            width: 90%;
-            max-width: 600px;
-        }
-
-        #video {
-            width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .button-container {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-
-        /* Buttons */
-        button {
-            font-size: 1.1em;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #333;
-            background: #ffd700;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
-            background: #ffcc00;
-            transform: scale(1.05);
-        }
-
-        /* Scanned Images Section */
-        #scanned-images {
-            margin-top: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-        }
-
-        .scanned-image {
-            width: 200px;
-            height: auto;
-            border: 3px solid #ffd700;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #ffd700;
-            width: 100%;
-            border-top: 5px solid #ffcc00;
-            margin-top: 20px;
-        }
-
-        footer p {
-            margin: 0;
-            font-size: 0.9em;
-        }
-    </style>
+    <title>ICR with Camera & Excel Export</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Header Section -->
-    <header>
-        <h1>SETA Hardware Shop</h1>
-        <h2>Invoice and Product Scanner</h2>
-    </header>
+    <div class="container">
+        <h1>Image Text Recognition & Excel Export</h1>
+        <p>Extract text from labels and export the structured data to an Excel file.</p>
 
-    <!-- Main Camera Section -->
-    <main>
-        <section id="camera-section">
-            <video id="video" autoplay playsinline disablePictureInPicture></video>
-            <canvas id="canvas" style="display:none;"></canvas>
-            <div class="button-container">
-                <button id="flipCamera">Flip Camera</button>
-                <button id="captureButton">Scan</button>
-            </div>
-        </section>
+        <!-- Camera and Buttons -->
+        <div class="camera-container">
+            <video id="camera" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+        </div>
 
-        <!-- Scanned Images Section -->
-        <div id="scanned-images"></div>
-    </main>
+        <div class="button-container">
+            <button id="flipButton">Flip Camera</button>
+            <button id="captureButton">Capture Image</button>
+            <button id="exportButton">Export to Excel</button>
+        </div>
 
-    <!-- Footer Section -->
+        <!-- Extracted Data -->
+        <h2>Extracted Data</h2>
+        <div id="outputAttributes" class="output-container">No data extracted yet...</div>
+    </div>
+
     <footer>
-        <p>&copy; 2024 SETA Hardware Shop. All rights reserved.</p>
+        <p>Developed for Intelligent Character Recognition | © 2024</p>
     </footer>
 
-    <script>
-        // DOM Elements
-        const video = document.getElementById('video');
-        const flipCameraBtn = document.getElementById('flipCamera');
-        const captureButton = document.getElementById('captureButton');
-        const canvas = document.getElementById('canvas');
-        const scannedImagesContainer = document.getElementById('scanned-images');
-        const ctx = canvas.getContext('2d');
-
-        // Variables
-        let currentStream = null;
-        let facingMode = 'environment'; // Default to back camera for scanning
-
-        // Function to start the camera
-        async function startCamera() {
-            // Stop current stream if it exists
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
-
-            // Get new stream based on the facing mode
-            try {
-                const constraints = {
-                    video: { facingMode }
-                };
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = currentStream;
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-                alert('Could not access camera. Please allow permissions.');
-            }
-        }
-
-        // Capture Image
-        function captureImage() {
-            // Set canvas dimensions to match the video
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            // Draw video frame on the canvas
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Create an image element and display it below the video
-            const img = document.createElement('img');
-            img.src = canvas.toDataURL('image/png');
-            img.classList.add('scanned-image');
-            scannedImagesContainer.appendChild(img);
-        }
-
-        // Flip Camera
-        flipCameraBtn.addEventListener('click', () => {
-            facingMode = facingMode === 'environment' ? 'user' : 'environment'; // Toggle camera
-            startCamera();
-        });
-
-        // Capture Button Event
-        captureButton.addEventListener('click', captureImage);
-
-        // Initialize Camera on Page Load
-        startCamera();
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
