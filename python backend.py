@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Salesforce credentials
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
 SF_PASSWORD = 'Sairam12345@'
-SF_SECURITY_TOKEN = 'Your_Security_Token'  # Replace with your security token
+SF_SECURITY_TOKEN = 'Iy4DWr8USHwJFf8h2EzPDM1Y'
 
 # Initialize Salesforce connection
 try:
@@ -85,6 +85,7 @@ def create_motor_record_in_salesforce(data):
         }
         result = sf.SETA_product_details__c.create(record)
         logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
+        print(f"Record created successfully. Record ID: {result['id']}")
     except Exception as e:
         logging.error(f"Error creating motor record in Salesforce: {e}")
 
