@@ -1,15 +1,6 @@
 const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame", 
+    "Model Name/Number", "Power", "Brand", "Motor Phase", "Type Of End Use", "Automation Grade",
+    "Voltage", "Frequency", "Engine Cooling", "Price", "Other Specifications"
 ];
 
 let currentFacingMode = "environment";
@@ -17,7 +8,6 @@ let stream = null;
 let extractedData = {};
 let allData = [];
 
-// Elements
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const outputDiv = document.getElementById('outputAttributes');
@@ -74,30 +64,25 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords and Entire Text
+// Map Extracted Text to Keywords
 function processTextToAttributes(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
-    // Store the entire text in a new column
-    extractedData["Entire Text"] = text.trim();
-
-    // Extract Product Name (specific field)
-    let productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
-    extractedData["Product name"] = productName.split(":")[1]?.trim() || productName;
-
-    // Map other keywords
+    // Map attributes dynamically based on keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                const value = line.split(":")[1]?.trim() || "-";
-                if (value !== "-") {
-                    extractedData[keyword] = value;
-                }
+                const value = line.split(":")[1]?.trim() || line.split(" ")[1]?.trim() || "-";
+                extractedData[keyword] = value;
                 break;
             }
         }
     });
+
+    // Store remaining unprocessed text in "Other Specifications"
+    const remainingText = lines.filter(line => !Object.values(extractedData).includes(line)).join(" ");
+    extractedData["Other Specifications"] = remainingText.trim() || "-";
 
     allData.push(extractedData);
     displayData();
@@ -116,7 +101,7 @@ function displayData() {
 // Export to Excel
 function saveToExcel(filename) {
     const workbook = XLSX.utils.book_new();
-    const headers = [...keywords, "Entire Text"];
+    const headers = [...keywords];
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
