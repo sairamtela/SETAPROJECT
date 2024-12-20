@@ -54,17 +54,17 @@ def perform_ocr(reader, image_path):
 def extract_structured_data(text):
     structured_data = {}
     patterns = {
-        "Model": r"Model\s*[:;-]\s*(.*?)\s*kW",
+        "Brand": r"Brand\s*[:;-]\s*(.*?)\s*$",
         "Voltage": r"Voltage\s*[:;-]\s*(.*?)\s*V",
-        "End Use": r"End\s*Use\s*[:;-]\s*(.*?)(?=\n)",
-        "Motor Phase": r"Phase\s*[:;-]\s*(\w+)",
-        "Brand": r"Brand\s*[:;-]\s*(.*?)\n",
-        "Power": r"Power\s*[:;-]\s*(\d+HP)",
-        "Specifications": r"Specifications\s*[:;-]\s*(.*?)(?=\n)"
+        "Horse Power": r"Horse Power\s*[:;-]\s*(\d+HP)",
+        "Serial Number": r"Serial Number\s*[:;-]\s*(.*?)\s*$",
+        "Phase": r"Phase\s*[:;-]\s*(\w+)",
+        "Weight": r"Weight\s*[:;-]\s*(.*?)\s*$",
+        "Height": r"Height\s*[:;-]\s*(\d+\.\d+)"
     }
 
     for field, pattern in patterns.items():
-        match = re.search(pattern, text)
+        match = re.search(pattern, text, re.MULTILINE)
         if match:
             structured_data[field] = match.group(1).strip()
 
@@ -81,13 +81,13 @@ def create_motor_record_in_salesforce(data):
 
     try:
         record = {
-            'Model__c': data.get('Model'),
-            'Voltage__c': data.get('Voltage'),
-            'Type_of_End_Use__c': data.get('End Use'),
-            'Motor_Phase__c': data.get('Motor Phase'),
             'Brand__c': data.get('Brand'),
-            'Power__c': data.get('Power'),
-            'Other_Specifications__c': data.get('Specifications')
+            'Voltage__c': data.get('Voltage'),
+            'Horse_power__c': data.get('Horse Power'),
+            'Serial_number__c': data.get('Serial Number'),
+            'Phase__c': data.get('Phase'),
+            'Weight__c': data.get('Weight'),
+            'Height__c': data.get('Height')
         }
         result = sf.SETA_product_details__c.create(record)
         logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
