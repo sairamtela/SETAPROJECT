@@ -29,13 +29,40 @@ def export_to_salesforce(data):
     try:
         # Map extracted data to Salesforce fields
         record = {
-            'Speed__c': data.get('Speed'),
-            'Phase__c': data.get('Phase'),
+            'Brand__c': data.get('Brand'),
+            'colour__c': data.get('Colour'),
+            'Company_name__c': data.get('Company Name'),
+            'Customer_care_number__c': data.get('Customer Care Number'),
+            'Frequency__c': data.get('Frequency'),
+            'Gross_weight__c': data.get('Gross Weight'),
+            'GSTIN__c': data.get('GSTIN'),
+            'Head_Size__c': data.get('Head Size'),
+            'Height__c': data.get('Height'),
+            'Horse_power__c': data.get('Horse Power'),
+            'Manufacture_date__c': data.get('Manufacture Date'),
+            'Material__c': data.get('Material'),
+            'Model__c': data.get('Model'),
+            'Motor_Frame__c': data.get('Motor Frame'),
+            'Motor_Type__c': data.get('Motor Type'),
+            'MRP__c': data.get('MRP'),
             'Other_Specifications__c': data.get('Other Specifications'),
-            'Type__c': data.get('Type'),
-            'RPM__c': data.get('RPM'),
+            'Phase__c': data.get('Phase'),
+            'Product_Name__c': data.get('Product Name'),
+            'Quantity__c': data.get('Quantity'),
+            'Ratio__c': data.get('Ratio'),
+            'RecordTypeId': data.get('Record Type ID'),
+            'Seller_Address__c': data.get('Seller Address'),
+            'Serial_number__c': data.get('Serial Number'),
+            'Speed__c': data.get('Speed'),
+            'Stage__c': data.get('Stage'),
+            'Total_amount__c': data.get('Total Amount'),
+            'Usage_Application__c': data.get('Usage/Application'),
+            'Voltage__c': data.get('Voltage'),
+            'Weight__c': data.get('Weight'),
         }
-        
+
+        print("Data being sent to Salesforce:", record)  # Debugging output
+
         # Create record in Salesforce
         result = sf.SETA_product_details__c.create(record)
         logging.info(f"Created motor record in Salesforce with ID: {result['id']}")
@@ -49,11 +76,36 @@ def process_extracted_data():
     """Simulated function to process extracted data."""
     # Example data extracted from UI
     extracted_data = {
-        'Speed': 'Motor Speed 1600 RPM',
-        'Type': 'Engine Type 4 Stroke',
-        'Phase': 'Motor Phase Single Phase',
-        'RPM': 'Motor Speed 1600 RPM',
-        'Other Specifications': 'OV 5 HP wer Source Diesel Voltage 220 V Frequency 50 Hz Material Mild Steel',
+        'Brand': 'BrandName',
+        'Colour': 'Red',
+        'Company Name': 'Company ABC',
+        'Customer Care Number': '1234567890',
+        'Frequency': '50 Hz',
+        'Gross Weight': '500 KG',
+        'GSTIN': '27AABCU9603R1ZN',
+        'Head Size': 'Large',
+        'Height': '180 CM',
+        'Horse Power': '5 HP',
+        'Manufacture Date': '2023-12-01',
+        'Material': 'Steel',
+        'Model': 'Model123',
+        'Motor Frame': 'Frame456',
+        'Motor Type': 'Type789',
+        'MRP': '20000',
+        'Other Specifications': 'Special Features',
+        'Phase': 'Single Phase',
+        'Product Name': 'Motor XYZ',
+        'Quantity': '10',
+        'Ratio': '1:5',
+        'Record Type ID': '0123A000000LMNOP',
+        'Seller Address': '123 Main Street',
+        'Serial Number': 'SN987654321',
+        'Speed': '1600 RPM',
+        'Stage': 'Stage 1',
+        'Total Amount': '50000',
+        'Usage/Application': 'Industrial',
+        'Voltage': '220V',
+        'Weight': '50 KG',
     }
 
     # Export to Salesforce
