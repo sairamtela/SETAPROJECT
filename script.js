@@ -76,13 +76,18 @@ async function processImage(img) {
 
 // Map Extracted Text to Keywords
 function processTextToAttributes(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").filter(line => line.trim() !== "");
     extractedData = {};
 
+    // Extract Product Name (specific field)
+    let productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
+    extractedData["Product name"] = productName.split(":")[1]?.trim() || productName;
+
+    // Map other keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
-            if (line.includes(keyword)) {
-                const value = line.split(":"[1]?.trim() || "-");
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                const value = line.split(":")[1]?.trim() || "-";
                 if (value !== "-") {
                     extractedData[keyword] = value;
                 }
@@ -106,14 +111,23 @@ function displayData() {
 }
 
 // Export to Excel
-document.getElementById('exportButton').addEventListener('click', () => {
+function saveToExcel(filename) {
     const workbook = XLSX.utils.book_new();
-    const headers = keywords;
+    const headers = ["Product name", ...keywords.filter(k => k !== "Product name")];
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
+    XLSX.writeFile(workbook, filename);
+}
+
+// Add Event Listeners for Save and Download Buttons
+document.getElementById('saveButton').addEventListener('click', () => {
+    saveToExcel("Saved_Data.xlsx");
+});
+
+document.getElementById('downloadButton').addEventListener('click', () => {
+    saveToExcel("Downloaded_Data.xlsx");
 });
 
 // Start Camera on Load
