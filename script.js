@@ -50,7 +50,16 @@ document.getElementById('captureButton').addEventListener('click', () => {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob(blob => {
+    // Crop the bottom section of the image
+    const croppedCanvas = document.createElement("canvas");
+    const croppedContext = croppedCanvas.getContext("2d");
+    const cropHeight = Math.floor(canvas.height * 0.2); // Bottom 20% of the image
+    croppedCanvas.width = canvas.width;
+    croppedCanvas.height = cropHeight;
+
+    croppedContext.drawImage(canvas, 0, canvas.height - cropHeight, canvas.width, cropHeight, 0, 0, canvas.width, cropHeight);
+
+    croppedCanvas.toBlob(blob => {
         const img = new Image();
         img.src = URL.createObjectURL(blob);
         img.onload = () => processImage(img);
@@ -64,7 +73,7 @@ async function processImage(img) {
         const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            processTextToAttributes(result.data.text);
+            extractProductName(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
@@ -74,49 +83,20 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords and Entire Data
-function processTextToAttributes(text) {
+// Extract Product Name
+function extractProductName(text) {
     const lines = text.split("\n").filter(line => line.trim() !== "");
-    extractedData = {};
+    const productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
+    extractedData["Product Name"] = productName.trim();
 
-    // Store entire extracted text
-    extractedData["Entire Extracted Data"] = text.trim();
-
-    // Extract Product Name (specific field)
-    let productName = lines.find(line => line.toLowerCase().includes("product name")) || lines[0];
-    extractedData["Product Name"] = productName.split(":")[1]?.trim() || productName;
-
-    // Map other keywords
-    keywords.forEach(keyword => {
-        for (let line of lines) {
-            if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                const value = line.split(":")[1]?.trim() || "-";
-                if (value !== "-") {
-                    extractedData[keyword] = value;
-                }
-                break;
-            }
-        }
-    });
-
-    allData.push(extractedData);
-    displayData();
-}
-
-// Display Data
-function displayData() {
-    outputDiv.innerHTML = "";
-    Object.entries(extractedData).forEach(([key, value]) => {
-        if (value) {
-            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-        }
-    });
+    // Display Extracted Product Name
+    outputDiv.innerHTML = `<p><strong>Product Name:</strong> ${extractedData["Product Name"]}</p>`;
 }
 
 // Export to Excel
 function saveToExcel(filename) {
     const workbook = XLSX.utils.book_new();
-    const headers = ["Entire Extracted Data", "Product Name", ...keywords.filter(k => k !== "Product Name")];
+    const headers = ["Product Name", ...keywords.filter(k => k !== "Product Name")];
     const data = allData.map(row => headers.map(key => row[key] || "-"));
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
