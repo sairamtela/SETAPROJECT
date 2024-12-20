@@ -27,12 +27,15 @@ def export_to_salesforce():
         return jsonify({"error": "Salesforce service is not initialized"}), 500
 
     data = request.json  # Get data from frontend
+    print("Received data from frontend:", data)
+
     if not data:
         return jsonify({"error": "No data received"}), 400
 
     try:
         # Map extracted data to Salesforce fields
         record = {
+            'Name': data.get('Product Name', 'Default Name'),  # Default value for Name
             'Brand__c': data.get('Brand'),
             'colour__c': data.get('Colour'),
             'Company_name__c': data.get('Company Name'),
