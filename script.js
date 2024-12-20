@@ -1,6 +1,6 @@
 <script>
     const keywords = [
-        "Engine Type", "Motor Phase", "Voltage", "Frequency", "Material", "Motor Speed"
+        "Number Of Stages", "Motor Horsepower", "Brand", "Usage/Application", "Model Name/Number"
     ];
 
     let currentFacingMode = "environment";
@@ -42,8 +42,7 @@
 
         // Preprocess the image
         const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-        const processedData = preprocessImage(imageData, context);
-        canvas.putImageData(processedData, 0, 0);
+        preprocessImage(imageData, context);
 
         // Process the preprocessed image
         canvas.toBlob(blob => {
@@ -60,7 +59,7 @@
             const avg = (data[i] + data[i + 1] + data[i + 2]) / 3; // Grayscale
             data[i] = data[i + 1] = data[i + 2] = avg > 128 ? 255 : 0; // Thresholding
         }
-        return new ImageData(data, imageData.width, imageData.height);
+        context.putImageData(imageData, 0, 0);
     }
 
     // Process Image with Tesseract.js
@@ -68,8 +67,8 @@
         outputDiv.innerHTML = "<p>Processing...</p>";
         try {
             const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+            console.log("Raw OCR Result:", result.data.text);
             if (result && result.data.text) {
-                console.log("OCR Result:", result.data.text);
                 processTextToAttributes(result.data.text);
             } else {
                 outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
@@ -90,9 +89,7 @@
             for (let line of lines) {
                 if (line.toLowerCase().includes(keyword.toLowerCase())) {
                     const value = line.split(":")[1]?.trim() || line.split(" ")[1]?.trim() || "-";
-                    if (value !== "-") {
-                        extractedData[keyword] = value;
-                    }
+                    extractedData[keyword] = value;
                     break;
                 }
             }
