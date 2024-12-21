@@ -6,9 +6,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Salesforce credentials
-SF_USERNAME = os.getenv('SF_USERNAME')  # Replace with your username
-SF_PASSWORD = os.getenv('SF_PASSWORD')  # Replace with your password
-SF_SECURITY_TOKEN = os.getenv('SF_SECURITY_TOKEN')  # Replace with your security token
+SF_USERNAME = os.getenv('sairamtelagamsetti@sathkrutha.sandbox')  # Replace with your username
+SF_PASSWORD = os.getenv('Sairam12345@')  # Replace with your password
+SF_SECURITY_TOKEN = os.getenv('FTvAU65IiITF4541K2Y5tDgi')  # Replace with your security token
 
 # Initialize Salesforce connection
 try:
