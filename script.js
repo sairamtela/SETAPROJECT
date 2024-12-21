@@ -124,21 +124,36 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         return;
     }
 
+    // Sanitize and prepare the data for export
+    const sanitizedData = {};
+    for (const [key, value] of Object.entries(extractedData)) {
+        if (Array.isArray(value)) {
+            sanitizedData[key] = value.join(", "); // Convert array to a string
+        } else if (value !== undefined && value !== null) {
+            sanitizedData[key] = value.toString(); // Ensure string format
+        } else {
+            sanitizedData[key] = ""; // Handle null or undefined values
+        }
+    }
+
+    console.log("Sanitized Data to be sent:", sanitizedData);
+
     try {
-        console.log("Exporting Data to Salesforce:", extractedData);
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ extractedData }),
+            body: JSON.stringify({ data: sanitizedData }), // Wrap data under a "data" key
         });
 
-        const result = await response.json();
         if (response.ok) {
+            const result = await response.json();
             alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
-            alert(`Error creating record in Salesforce: ${result.error}`);
+            const errorDetails = await response.json();
+            console.error("Salesforce Error Response:", errorDetails);
+            alert(`Error creating record in Salesforce: ${errorDetails.message || errorDetails.error}`);
         }
     } catch (error) {
         console.error("Error exporting data to Salesforce:", error);
