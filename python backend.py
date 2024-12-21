@@ -3,7 +3,7 @@ from simple_salesforce import Salesforce
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS to allow requests from different origins
+CORS(app)  # Enable CORS for cross-origin requests
 
 # Salesforce credentials
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
@@ -43,12 +43,12 @@ def export_to_salesforce():
     try:
         # Map data to Salesforce fields
         record = {
-            'Name': data.get('Product name', 'Default Name'),
-            'Voltage__c': data.get('Voltage', None),
-            'Phase__c': data.get('Phase', None),
-            'Brand__c': data.get('Brand', None),
-            'Power__c': data.get('Power', None),
-            'Other_Specifications__c': data.get('Other Specifications', None),
+            'Name': data.get('Product name', 'Default Name'),  # Default Name if missing
+            'Voltage__c': data.get('Voltage', None),           # Skip if missing
+            'Phase__c': data.get('Phase', 'Unknown Phase'),    # Default to 'Unknown Phase'
+            'Brand__c': data.get('Brand', 'Unknown Brand'),    # Default to 'Unknown Brand'
+            'Power__c': data.get('Power', None),               # Skip if missing
+            'Other_Specifications__c': data.get('Other Specifications', None),  # Skip if missing
         }
         print("Mapped Salesforce Record:", record)  # Debugging
 
@@ -61,4 +61,4 @@ def export_to_salesforce():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)  # Accessible from all network interfaces
+    app.run(debug=True)
