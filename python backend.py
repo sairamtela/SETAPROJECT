@@ -33,6 +33,8 @@ def export_to_salesforce():
 
     # Get data from the frontend
     data = request.json.get('extractedData', {})
+    print("Received Extracted Data:", data)  # Debugging
+
     if not data:
         return jsonify({"error": "No extracted data received"}), 400
 
@@ -40,15 +42,16 @@ def export_to_salesforce():
         # Map data to Salesforce fields
         record = {
             'Name': data.get('Product name', 'Default Name'),
-            'Voltage__c': data.get('Voltage'),
-            'Phase__c': data.get('Phase'),
-            'Brand__c': data.get('Brand'),
-            'Power__c': data.get('Power'),
-            'Other_Specifications__c': data.get('Other Specifications'),
+            'Voltage__c': data.get('Voltage', 'Unknown Voltage'),
+            'Phase__c': data.get('Phase', 'Unknown Phase'),
+            'Brand__c': data.get('Brand', 'Unknown Brand'),
+            'Power__c': data.get('Power', 'Unknown Power'),
+            'Other_Specifications__c': data.get('Other Specifications', 'No Additional Info'),
         }
+        print("Mapped Salesforce Record:", record)  # Debugging
 
         # Replace 'Your_Salesforce_Object__c' with your actual Salesforce object API name
-        result = sf.Your_Salesforce_Object__c.create(record)
+        result = sf.SETA_product_details__c.create(record)
         print(f"Record created in Salesforce with ID: {result['id']}")
         return jsonify({"success": True, "record_id": result['id']}), 201
     except Exception as e:
