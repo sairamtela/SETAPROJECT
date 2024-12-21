@@ -123,14 +123,20 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         return;
     }
 
+    // Ensure all fields are strings
+    const sanitizedData = {};
+    for (const [key, value] of Object.entries(extractedData)) {
+        sanitizedData[key] = Array.isArray(value) ? value.join(", ") : value.toString();
+    }
+
     try {
-        console.log("Exporting Data to Salesforce:", extractedData);
+        console.log("Exporting Data to Salesforce:", sanitizedData);
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ extractedData }),
+            body: JSON.stringify({ extractedData: sanitizedData }),
         });
 
         const result = await response.json();
