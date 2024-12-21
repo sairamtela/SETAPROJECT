@@ -1,16 +1,12 @@
 import cv2
 import easyocr
 from simple_salesforce import Salesforce
-import os
 
 # Salesforce credentials
-SF_USERNAME = 'gopichandra@sathkrutha.com'
-SF_PASSWORD = 'Gopi@12345'
-SF_SECURITY_TOKEN = 'TIfdMTLPm7V7fFuNmzcofcMt'
+SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
+SF_PASSWORD = 'Sairam12345@'
+SF_SECURITY_TOKEN = 'FTvAU65IiITF4541K2Y5tDgi'
 SF_DOMAIN = 'login'
-
-# Temporary path for saving captured frame
-TEMP_IMAGE_PATH = "captured_frame.jpg"
 
 # Initialize Salesforce connection
 def initialize_salesforce():
@@ -63,10 +59,11 @@ def capture_frame(cap):
 def perform_ocr(reader, frame):
     try:
         # Save frame temporarily for OCR processing
-        cv2.imwrite(TEMP_IMAGE_PATH, frame)
+        temp_image_path = "captured_frame.jpg"
+        cv2.imwrite(temp_image_path, frame)
 
         # Perform OCR
-        results = reader.readtext(TEMP_IMAGE_PATH)
+        results = reader.readtext(temp_image_path)
         extracted_text = "\n".join([result[1] for result in results])
         print("\nExtracted Text:")
         print(extracted_text)
@@ -80,28 +77,22 @@ def save_to_salesforce(sf, extracted_text):
     try:
         # Debug: Log the extracted text
         print("Preparing data for Salesforce...")
-
-        # Example parsing logic for structured data (extendable as needed)
+        
+        # Split extracted text into structured data (example: parsing logic can be added here)
         structured_data = {
             'Name': extracted_text[:80],  # Truncate to 80 characters for the Name field
-            'Description__c': extracted_text  # Additional field for detailed text
+            'Description__c': extracted_text  # Example additional field for detailed text
         }
 
         # Replace 'Your_Salesforce_Object__c' with the actual Salesforce object API name
         print(f"Structured Data to Save: {structured_data}")
-        result = sf.SETA_DETAILS__c.create(structured_data)  # Replace with your object name
-
+        result = sf.Your_Salesforce_Object__c.create(structured_data)
+        
         # Debug: Log the Salesforce response
         print(f"Record created successfully in Salesforce with ID: {result['id']}")
     except Exception as e:
         # Debug: Log the error response from Salesforce
         print(f"Error saving data to Salesforce: {e}")
-
-# Clean up temporary files
-def cleanup():
-    if os.path.exists(TEMP_IMAGE_PATH):
-        os.remove(TEMP_IMAGE_PATH)
-        print("Temporary file cleaned up.")
 
 # Main Execution
 def main():
@@ -123,33 +114,24 @@ def main():
         print("Camera initialization failed. Exiting...")
         return
 
-    try:
-        # Capture a frame
-        frame = capture_frame(cap)
-        if frame is not None:
-            cv2.imshow('Captured Frame', frame)
-            cv2.waitKey(0)
+    # Capture a frame
+    frame = capture_frame(cap)
+    if frame is not None:
+        cv2.imshow('Captured Frame', frame)
+        cv2.waitKey(0)
 
-            # Perform OCR on the frame
-            extracted_text = perform_ocr(reader, frame)
+        # Perform OCR on the frame
+        extracted_text = perform_ocr(reader, frame)
 
-            # Save extracted data to Salesforce
-            if extracted_text:
-                save_to_salesforce(sf, extracted_text)
-            else:
-                print("No text extracted from the frame.")
+        # Save extracted data to Salesforce
+        if extracted_text:
+            save_to_salesforce(sf, extracted_text)
 
-        else:
-            print("Failed to capture frame. Exiting...")
-
-    finally:
         # Release camera resources
-        if cap:
-            cap.release()
+        cap.release()
         cv2.destroyAllWindows()
-
-        # Clean up temporary files
-        cleanup()
+    else:
+        print("Failed to capture frame. Exiting...")
 
 if __name__ == "__main__":
     main()
