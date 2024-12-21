@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
 SF_PASSWORD = 'Sairam12345@'
 SF_SECURITY_TOKEN = 'Iy4DWr8USHwJFf8h2EzPDM1Y'
-
+SF_DOMAIN = 'login'
 # Initialize Salesforce connection
 try:
     sf = Salesforce(username=SF_USERNAME, password=SF_PASSWORD, security_token=SF_SECURITY_TOKEN)
