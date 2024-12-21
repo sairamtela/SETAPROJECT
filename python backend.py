@@ -1,6 +1,9 @@
-import cv2
-import easyocr
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from simple_salesforce import Salesforce
+
+app = Flask(__name__)
+CORS(app)
 
 # Salesforce credentials
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
@@ -12,9 +15,9 @@ SF_DOMAIN = 'login'
 def initialize_salesforce():
     try:
         sf = Salesforce(
-            username=SF_USERNAME, 
-            password=SF_PASSWORD, 
-            security_token=SF_SECURITY_TOKEN, 
+            username=SF_USERNAME,
+            password=SF_PASSWORD,
+            security_token=SF_SECURITY_TOKEN,
             domain=SF_DOMAIN
         )
         print("Salesforce connection established.")
@@ -23,115 +26,39 @@ def initialize_salesforce():
         print(f"Error initializing Salesforce: {e}")
         return None
 
-# Initialize EasyOCR Reader
-def initialize_reader():
-    try:
-        reader = easyocr.Reader(['en'])
-        print("OCR reader initialized.")
-        return reader
-    except Exception as e:
-        print(f"Error initializing EasyOCR Reader: {e}")
-        return None
+sf = initialize_salesforce()
 
-# Initialize Camera
-def initialize_camera():
-    print("Initializing camera...")
-    cap = cv2.VideoCapture(0)  # Use the correct index for your camera
-    if not cap.isOpened():
-        print("Error: Camera not accessible.")
-        return None
-    print("Camera initialized successfully.")
-    return cap
-
-# Capture a frame from the camera
-def capture_frame(cap):
-    if not cap:
-        print("Error: Camera not initialized.")
-        return None
-    ret, frame = cap.read()
-    if not ret:
-        print("Error: Failed to capture frame.")
-        return None
-    print("Frame captured successfully.")
-    return frame
-
-# Perform OCR on the captured frame
-def perform_ocr(reader, frame):
-    try:
-        # Save frame temporarily for OCR processing
-        temp_image_path = "captured_frame.jpg"
-        cv2.imwrite(temp_image_path, frame)
-
-        # Perform OCR
-        results = reader.readtext(temp_image_path)
-        extracted_text = "\n".join([result[1] for result in results])
-        print("\nExtracted Text:")
-        print(extracted_text)
-        return extracted_text
-    except Exception as e:
-        print(f"Error performing OCR: {e}")
-        return ""
-
-# Save extracted data to Salesforce
-def save_to_salesforce(sf, extracted_text):
-    try:
-        # Debug: Log the extracted text
-        print("Preparing data for Salesforce...")
-        
-        # Split extracted text into structured data (example: parsing logic can be added here)
-        structured_data = {
-            'Name': extracted_text[:80],  # Truncate to 80 characters for the Name field
-            'Description__c': extracted_text  # Example additional field for detailed text
-        }
-
-        # Replace 'Your_Salesforce_Object__c' with the actual Salesforce object API name
-        print(f"Structured Data to Save: {structured_data}")
-        result = sf.Your_Salesforce_Object__c.create(structured_data)
-        
-        # Debug: Log the Salesforce response
-        print(f"Record created successfully in Salesforce with ID: {result['id']}")
-    except Exception as e:
-        # Debug: Log the error response from Salesforce
-        print(f"Error saving data to Salesforce: {e}")
-
-# Main Execution
-def main():
-    # Initialize Salesforce
-    sf = initialize_salesforce()
+@app.route('/export_to_salesforce', methods=['POST'])
+def export_to_salesforce():
     if not sf:
-        print("Salesforce initialization failed. Exiting...")
-        return
+        return jsonify({"error": "Salesforce connection failed"}), 500
 
-    # Initialize OCR Reader
-    reader = initialize_reader()
-    if not reader:
-        print("OCR reader initialization failed. Exiting...")
-        return
+    # Get data from the frontend
+    data = request.json.get('extractedData', {})
+    print("Received Extracted Data:", data)  # Debugging
 
-    # Initialize Camera
-    cap = initialize_camera()
-    if not cap:
-        print("Camera initialization failed. Exiting...")
-        return
+    if not data:
+        return jsonify({"error": "No extracted data received"}), 400
 
-    # Capture a frame
-    frame = capture_frame(cap)
-    if frame is not None:
-        cv2.imshow('Captured Frame', frame)
-        cv2.waitKey(0)
+    try:
+        # Map extracted data to Salesforce fields
+        record = {
+            'Name': data.get('Product name', 'Default Name'),
+            'Voltage__c': data.get('Voltage', None),
+            'Phase__c': data.get('Phase', None),
+            'Brand__c': data.get('Brand', None),
+            'Power__c': data.get('Power', None),
+            'Other_Specifications__c': data.get('Other Specifications', None),
+        }
+        print("Mapped Salesforce Record:", record)  # Debugging
 
-        # Perform OCR on the frame
-        extracted_text = perform_ocr(reader, frame)
-
-        # Save extracted data to Salesforce
-        if extracted_text:
-            save_to_salesforce(sf, extracted_text)
-
-        # Release camera resources
-        cap.release()
-        cv2.destroyAllWindows()
-    else:
-        print("Failed to capture frame. Exiting...")
+        # Replace 'SETA_product_details__c' with your actual Salesforce object API name
+        result = sf.SETA_product_details__c.create(record)
+        print(f"Record created in Salesforce with ID: {result['id']}")
+        return jsonify({"success": True, "record_id": result['id']}), 201
+    except Exception as e:
+        print(f"Error saving data to Salesforce: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
