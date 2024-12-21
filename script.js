@@ -9,7 +9,7 @@ const keywords = [
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
     "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame",
+    "frame", 
 ];
 
 let currentFacingMode = "environment";
@@ -25,29 +25,15 @@ const outputDiv = document.getElementById('outputAttributes');
 // Start Camera
 async function startCamera() {
     try {
-        // Stop any previous streams
         if (stream) stream.getTracks().forEach(track => track.stop());
-
-        // Request access to the camera
         stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: currentFacingMode, width: 1280, height: 720 }
         });
-
-        // Bind the video stream to the video element
         video.srcObject = stream;
         video.play();
-        console.log("Camera started successfully.");
     } catch (err) {
-        console.error("Error accessing the camera:", err);
-
-        // Handle specific errors
-        if (err.name === "NotAllowedError") {
-            alert("Camera access was denied. Please allow camera permissions in your browser settings and refresh the page.");
-        } else if (err.name === "NotFoundError") {
-            alert("No camera device found. Please ensure a camera is connected.");
-        } else {
-            alert("An error occurred while accessing the camera. Check the console for details.");
-        }
+        alert("Camera access denied or unavailable.");
+        console.error(err);
     }
 }
 
@@ -132,45 +118,32 @@ function displayData() {
 
 // Export to Salesforce
 document.getElementById('exportButton').addEventListener('click', async () => {
-    if (!Object.keys(extractedData).length) {
-        alert("No data to export. Capture an image first.");
+    if (Object.keys(extractedData).length === 0) {
+        alert("No extracted data available to export. Please process an image first.");
         return;
     }
 
     try {
+        console.log("Exporting Data to Salesforce:", extractedData);
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ extractedData })
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ extractedData }),
         });
 
         const result = await response.json();
         if (response.ok) {
-            alert(`Record created in Salesforce. Record ID: ${result.record_id}`);
+            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
-            alert(`Error: ${result.error}`);
+            alert(`Error creating record in Salesforce: ${result.error}`);
         }
     } catch (error) {
-        console.error("Export Error:", error);
-        alert("Failed to export data to Salesforce.");
+        console.error("Error exporting data to Salesforce:", error);
+        alert("Error exporting data to Salesforce. Check console for details.");
     }
 });
 
-// Export to Excel
-document.getElementById('exportExcelButton').addEventListener('click', () => {
-    if (!allData.length) {
-        alert("No data to export to Excel. Capture an image first.");
-        return;
-    }
-
-    const workbook = XLSX.utils.book_new();
-    const headers = Object.keys(extractedData);
-    const data = allData.map(row => headers.map(key => row[key] || "-"));
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
-});
-
-// Start Camera on Page Load
+// Start Camera on Load
 startCamera();
