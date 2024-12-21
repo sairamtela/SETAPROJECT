@@ -28,45 +28,38 @@ def initialize_salesforce():
 
 sf = initialize_salesforce()
 
-# Helper function to map OCR text to Salesforce fields
+# Parsing function to map extracted data to Salesforce fields
 def parse_extracted_data(data):
     """Parse the extracted data into Salesforce fields."""
-    # Mapping extracted text to Salesforce fields
     fields_mapping = {
         "Brand": "Brand__c",
         "Colour": "Colour__c",
-        "Company Name": "Company_name__c",
-        "Customer Care Number": "Customer_care_number__c",
-        "Frequency": "Frequency__c",
-        "Gross Weight": "Gross_weight__c",
-        "GSTIN": "GSTIN__c",
-        "Head Size": "Head_Size__c",
-        "Height": "Height__c",
-        "Horse Power": "Horse_power__c",
-        "Manufacture Date": "Manufacture_date__c",
-        "Material": "Material__c",
-        "Model": "Model__c",
-        "Motor Frame": "Motor_Frame__c",
-        "Motor Type": "Motor_Type__c",
-        "MRP": "MRP__c",
-        "Phase": "Phase__c",
-        "Product Name": "Product_Name__c",
-        "Quantity": "Quantity__c",
-        "Ratio": "Ratio__c",
-        "Seller Address": "Seller_Address__c",
-        "Stage": "Stage__c",
-        "Total Amount": "Total_amount__c",
-        "Usage/Application": "Usage_Application__c",
+        "Power": "Power__c",
         "Voltage": "Voltage__c",
+        "Phase": "Phase__c",
+        "Material": "Material__c",
+        "Frequency": "Frequency__c",
+        "Product Name": "Product_Name__c",
+        "Usage/Application": "Usage_Application__c",
     }
-    
-    # Parse and map extracted data to Salesforce fields
-    record = {}
-    for key, field in fields_mapping.items():
-        record[field] = data.get(key, None)
 
-    # Add 'Name' field for Salesforce
-    record['Name'] = data.get('Product Name', 'Default Name')
+    # Split the "Other Specifications" field into lines for processing
+    extracted_text = data.get("Other Specifications", "")
+    lines = extracted_text.split("\n")
+
+    record = {}
+    for line in lines:
+        for keyword, field_name in fields_mapping.items():
+            if keyword.lower() in line.lower():
+                # Extract value following the keyword
+                value_start_index = line.lower().find(keyword.lower()) + len(keyword)
+                value = line[value_start_index:].strip()
+                record[field_name] = value
+                break
+
+    # Add fallback values for required fields
+    record["Name"] = data.get("Product Name", "Default Product Name")
+    record["Other_Specifications__c"] = data.get("Other Specifications", "")
     return record
 
 @app.route('/export_to_salesforce', methods=['POST'])
