@@ -123,10 +123,16 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         return;
     }
 
-    // Ensure all fields are strings
+    // Ensure all fields are sanitized as strings
     const sanitizedData = {};
     for (const [key, value] of Object.entries(extractedData)) {
-        sanitizedData[key] = Array.isArray(value) ? value.join(", ") : value.toString();
+        if (Array.isArray(value)) {
+            sanitizedData[key] = value.join(", "); // Convert array to comma-separated string
+        } else if (value !== undefined && value !== null) {
+            sanitizedData[key] = value.toString(); // Convert other values to strings
+        } else {
+            sanitizedData[key] = ""; // Handle null or undefined as empty string
+        }
     }
 
     try {
@@ -136,7 +142,7 @@ document.getElementById('exportButton').addEventListener('click', async () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ extractedData: sanitizedData }),
+            body: JSON.stringify(sanitizedData), // Send sanitizedData directly
         });
 
         const result = await response.json();
