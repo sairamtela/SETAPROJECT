@@ -83,7 +83,7 @@ function processTextToAttributes(text) {
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.includes(keyword)) {
-                const value = line.split(":"[1]?.trim() || "-");
+                const value = line.split(":")[1]?.trim() || "-";
                 if (value !== "-") {
                     extractedData[keyword] = value;
                 }
@@ -144,7 +144,7 @@ document.getElementById('exportButton').addEventListener('click', async () => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ data: sanitizedData }), // Nest data under a `data` key
+            body: JSON.stringify(sanitizedData), // Send sanitizedData directly
         });
 
         const result = await response.json();
