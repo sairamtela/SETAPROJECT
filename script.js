@@ -75,14 +75,20 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords and Capture Remaining Text
+// Map Extracted Text to Keywords
 function processTextToAttributes(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     extractedData = {};
-    let remainingText = [];
+
+    if (lines.length > 0) {
+        // Set the first line as "Product Name"
+        extractedData["Product Name"] = lines[0];
+    }
+
+    const otherSpecifications = [];
 
     keywords.forEach(keyword => {
-        for (let line of lines) {
+        for (let line of lines.slice(1)) { // Exclude the first line
             if (line.includes(keyword)) {
                 const value = line.split(":")[1]?.trim() || "-";
                 if (value !== "-") {
@@ -93,21 +99,23 @@ function processTextToAttributes(text) {
         }
     });
 
-    // Capture remaining text that is not matched with keywords
-    lines.forEach(line => {
-        if (!Object.values(extractedData).some(value => line.includes(value))) {
-            remainingText.push(line.trim());
+    // Add unclassified text to "Other Specifications"
+    lines.slice(1).forEach(line => {
+        const isClassified = keywords.some(keyword => line.includes(keyword));
+        if (!isClassified) {
+            otherSpecifications.push(line);
         }
     });
 
-    // Add remaining text as "Other Specifications"
-    extractedData["Other Specifications"] = remainingText.join(" ");
+    if (otherSpecifications.length > 0) {
+        extractedData["Other Specifications"] = otherSpecifications.join(", ");
+    }
 
     allData.push(extractedData);
     displayData();
 }
 
-// Display Extracted Data
+// Display Data
 function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
