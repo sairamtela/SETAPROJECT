@@ -12,7 +12,10 @@ const keywords = [
     "frame",
 ];
 
+let currentFacingMode = "environment";
+let stream = null;
 let extractedData = {};
+let allData = [];
 
 // Elements
 const video = document.getElementById('camera');
@@ -22,13 +25,23 @@ const outputDiv = document.getElementById('outputAttributes');
 // Start Camera
 async function startCamera() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+        });
         video.srcObject = stream;
+        video.play();
     } catch (err) {
+        alert("Camera access denied or unavailable.");
         console.error("Camera access error:", err);
-        alert("Unable to access camera.");
     }
 }
+
+// Flip Camera
+document.getElementById('flipButton').addEventListener('click', () => {
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+    startCamera();
+});
 
 // Capture Image
 document.getElementById('captureButton').addEventListener('click', () => {
@@ -93,77 +106,16 @@ function processTextToAttributes(text) {
     displayData();
 }
 
-// Display Data
+// Display Extracted Data
 function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
-            outputDiv.innerHTML += <p><strong>${key}:</strong> ${value}</p>;
+            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
 }
 
-// Start Camera
-async function startCamera() {
-    try {
-        if (stream) stream.getTracks().forEach(track => track.stop());
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
-        });
-        video.srcObject = stream;
-        video.play();
-    } catch (err) {
-        alert("Camera access denied or unavailable.");
-        console.error(err);
-    }
-}
-
-// Flip Camera
-document.getElementById('flipButton').addEventListener('click', () => {
-    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera();
-});
-
-// Capture Image
-document.getElementById('captureButton').addEventListener('click', () => {
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    canvas.toBlob(blob => {
-        const img = new Image();
-        img.src = URL.createObjectURL(blob);
-        img.onload = () => processImage(img);
-    }, 'image/png');
-});
-
-// Process Image with Tesseract.js
-async function processImage(img) {
-    outputDiv.innerHTML = "<p>Processing...</p>";
-    try {
-        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
-        if (result && result.data.text) {
-            console.log("OCR Result:", result.data.text);
-            processTextToAttributes(result.data.text);
-        } else {
-            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
-        }
-    } catch (error) {
-        console.error("Tesseract.js Error:", error);
-        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
-    }
-}
-// Export to Excel
-document.getElementById('exportButton').addEventListener('click', () => {
-    const workbook = XLSX.utils.book_new();
-    const headers = keywords;
-    const data = allData.map(row => headers.map(key => row[key] || "-"));
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
-});
 // Export to Salesforce
 document.getElementById('exportButton').addEventListener('click', async () => {
     if (!Object.keys(extractedData).length) {
@@ -188,6 +140,22 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         console.error("Export Error:", error);
         alert("Failed to export data to Salesforce.");
     }
+});
+
+// Export to Excel
+document.getElementById('exportExcelButton').addEventListener('click', () => {
+    if (!allData.length) {
+        alert("No data to export to Excel. Capture an image first.");
+        return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const headers = Object.keys(extractedData);
+    const data = allData.map(row => headers.map(key => row[key] || "-"));
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
 });
 
 // Start Camera on Load
