@@ -28,6 +28,40 @@ def initialize_salesforce():
 
 sf = initialize_salesforce()
 
+# Parsing function to map extracted data to Salesforce fields
+def parse_extracted_data(data):
+    """Parse the extracted data into Salesforce fields."""
+    fields_mapping = {
+        "Brand": "Brand__c",
+        "Colour": "Colour__c",
+        "Power": "Power__c",
+        "Voltage": "Voltage__c",
+        "Phase": "Phase__c",
+        "Material": "Material__c",
+        "Frequency": "Frequency__c",
+        "Product Name": "Product_Name__c",
+        "Usage/Application": "Usage_Application__c",
+    }
+
+    # Split the "Other Specifications" field into lines for processing
+    extracted_text = data.get("Other Specifications", "")
+    lines = extracted_text.split("\n")
+
+    record = {}
+    for line in lines:
+        for keyword, field_name in fields_mapping.items():
+            if keyword.lower() in line.lower():
+                # Extract value following the keyword
+                value_start_index = line.lower().find(keyword.lower()) + len(keyword)
+                value = line[value_start_index:].strip()
+                record[field_name] = value
+                break
+
+    # Add fallback values for required fields
+    record["Name"] = data.get("Product Name", "Default Product Name")
+    record["Other_Specifications__c"] = data.get("Other Specifications", "")
+    return record
+
 @app.route('/export_to_salesforce', methods=['POST'])
 def export_to_salesforce():
     if not sf:
@@ -41,15 +75,8 @@ def export_to_salesforce():
         return jsonify({"error": "No extracted data received"}), 400
 
     try:
-        # Map extracted data to Salesforce fields
-        record = {
-            'Name': data.get('Product name', 'Default Name'),
-            'Voltage__c': data.get('Voltage', None),
-            'Phase__c': data.get('Phase', None),
-            'Brand__c': data.get('Brand', None),
-            'Power__c': data.get('Power', None),
-            'Other_Specifications__c': data.get('Other Specifications', None),
-        }
+        # Parse extracted data
+        record = parse_extracted_data(data)
         print("Mapped Salesforce Record:", record)  # Debugging
 
         # Replace 'SETA_product_details__c' with your actual Salesforce object API name
