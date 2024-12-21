@@ -1,91 +1,165 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from simple_salesforce import Salesforce
+// Keywords for data extraction
+const keywords = [
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consignee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "SR number", "RPM"
+];
 
-app = Flask(__name__)
-CORS(app)
+let currentFacingMode = "environment";
+let stream = null;
+let extractedData = {};
+let allData = [];
 
-# Salesforce credentials
-SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
-SF_PASSWORD = 'Sairam12345@'
-SF_SECURITY_TOKEN = 'FTvAU65IiITF4541K2Y5tDgi'
-SF_DOMAIN = 'login'
+// Elements
+const video = document.getElementById('camera');
+const canvas = document.getElementById('canvas');
+const outputDiv = document.getElementById('outputAttributes');
 
-# Initialize Salesforce connection
-def initialize_salesforce():
-    try:
-        sf = Salesforce(
-            username=SF_USERNAME,
-            password=SF_PASSWORD,
-            security_token=SF_SECURITY_TOKEN,
-            domain=SF_DOMAIN
-        )
-        print("Salesforce connection established.")
-        return sf
-    except Exception as e:
-        print(f"Error initializing Salesforce: {e}")
-        return None
+// Start Camera
+async function startCamera() {
+    try {
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+        });
+        video.srcObject = stream;
+        video.play();
+    } catch (err) {
+        alert("Camera access denied or unavailable.");
+        console.error(err);
+    }
+}
 
-sf = initialize_salesforce()
+// Flip Camera
+document.getElementById('flipButton').addEventListener('click', () => {
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+    startCamera();
+});
 
-# Parsing function to map extracted data to Salesforce fields
-def parse_extracted_data(data):
-    """Parse the extracted data into Salesforce fields."""
-    fields_mapping = {
-        "Brand": "Brand__c",
-        "Colour": "Colour__c",
-        "Power": "Power__c",
-        "Voltage": "Voltage__c",
-        "Phase": "Phase__c",
-        "Material": "Material__c",
-        "Frequency": "Frequency__c",
-        "Product Name": "Product_Name__c",
-        "Usage/Application": "Usage_Application__c",
+// Capture Image
+document.getElementById('captureButton').addEventListener('click', () => {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(blob => {
+        const img = new Image();
+        img.src = URL.createObjectURL(blob);
+        img.onload = () => processImage(img);
+    }, 'image/png');
+});
+
+// Process Image with Tesseract.js
+async function processImage(img) {
+    outputDiv.innerHTML = "<p>Processing...</p>";
+    try {
+        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+        if (result && result.data.text) {
+            console.log("OCR Result:", result.data.text);
+            processTextToAttributes(result.data.text);
+        } else {
+            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+        }
+    } catch (error) {
+        console.error("Tesseract.js Error:", error);
+        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
+    }
+}
+
+// Map Extracted Text to Keywords and Capture Remaining Text
+function processTextToAttributes(text) {
+    const lines = text.split("\n");
+    extractedData = {};
+    let remainingText = [];
+
+    keywords.forEach(keyword => {
+        for (let line of lines) {
+            if (line.includes(keyword)) {
+                const value = line.split(":")[1]?.trim() || "-";
+                if (value !== "-") {
+                    extractedData[keyword] = value;
+                }
+                break;
+            }
+        }
+    });
+
+    // Capture remaining text that is not matched with keywords
+    lines.forEach(line => {
+        if (!Object.values(extractedData).some(value => line.includes(value))) {
+            remainingText.push(line.trim());
+        }
+    });
+
+    // Add remaining text as "Other Specifications"
+    extractedData["Other Specifications"] = remainingText.join(" ");
+
+    allData.push(extractedData);
+    displayData();
+}
+
+// Display Extracted Data
+function displayData() {
+    outputDiv.innerHTML = "";
+    Object.entries(extractedData).forEach(([key, value]) => {
+        if (value) {
+            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+        }
+    });
+}
+
+// Export to Salesforce
+document.getElementById('exportButton').addEventListener('click', async () => {
+    if (Object.keys(extractedData).length === 0) {
+        alert("No extracted data available to export. Please process an image first.");
+        return;
     }
 
-    # Split the "Other Specifications" field into lines for processing
-    extracted_text = data.get("Other Specifications", "")
-    lines = extracted_text.split("\n")
+    // Sanitize and prepare the data for export
+    const sanitizedData = {};
+    for (const [key, value] of Object.entries(extractedData)) {
+        if (Array.isArray(value)) {
+            sanitizedData[key] = value.join(", "); // Convert array to a string
+        } else if (value !== undefined && value !== null) {
+            sanitizedData[key] = value.toString(); // Ensure string format
+        } else {
+            sanitizedData[key] = ""; // Handle null or undefined values
+        }
+    }
 
-    record = {}
-    for line in lines:
-        for keyword, field_name in fields_mapping.items():
-            if keyword.lower() in line.lower():
-                # Extract value following the keyword
-                value_start_index = line.lower().find(keyword.lower()) + len(keyword)
-                value = line[value_start_index:].strip()
-                record[field_name] = value
-                break
+    // Debug: Log sanitized data to verify structure
+    console.log("Sanitized Data to be sent:", sanitizedData);
 
-    # Add fallback values for required fields
-    record["Name"] = data.get("Product Name", "Default Product Name")
-    record["Other_Specifications__c"] = data.get("Other Specifications", "")
-    return record
+    try {
+        const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ recordData: sanitizedData }), // Wrap data under "recordData"
+        });
 
-@app.route('/export_to_salesforce', methods=['POST'])
-def export_to_salesforce():
-    if not sf:
-        return jsonify({"error": "Salesforce connection failed"}), 500
+        if (response.ok) {
+            const result = await response.json();
+            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
+        } else {
+            const errorDetails = await response.json();
+            console.error("Salesforce Error Response:", errorDetails);
+            alert(`Error creating record in Salesforce: ${errorDetails.message || errorDetails.error}`);
+        }
+    } catch (error) {
+        console.error("Error exporting data to Salesforce:", error);
+        alert("Error exporting data to Salesforce. Check console for details.");
+    }
+});
 
-    # Get data from the frontend
-    data = request.json.get('extractedData', {})
-    print("Received Extracted Data:", data)  # Debugging
-
-    if not data:
-        return jsonify({"error": "No extracted data received"}), 400
-
-    try:
-        # Parse extracted data
-        record = parse_extracted_data(data)
-        print("Mapped Salesforce Record:", record)  # Debugging
-
-        # Replace 'SETA_product_details__c' with your actual Salesforce object API name
-        result = sf.SETA_product_details__c.create(record)
-        print(f"Record created in Salesforce with ID: {result['id']}")
-        return jsonify({"success": True, "record_id": result['id']}), 201
-    except Exception as e:
-        print(f"Error saving data to Salesforce: {e}")
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(debug=True)
+// Start Camera on Load
+startCamera();
