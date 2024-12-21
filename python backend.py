@@ -50,7 +50,7 @@ def export_to_salesforce():
         }
         print("Mapped Salesforce Record:", record)  # Debugging
 
-        # Replace 'Your_Salesforce_Object__c' with your actual Salesforce object API name
+        # Replace 'SETA_product_details__c' with your actual Salesforce object API name
         result = sf.SETA_product_details__c.create(record)
         print(f"Record created in Salesforce with ID: {result['id']}")
         return jsonify({"success": True, "record_id": result['id']}), 201
