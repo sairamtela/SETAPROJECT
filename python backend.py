@@ -5,7 +5,7 @@ from simple_salesforce import Salesforce
 # Salesforce credentials
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
 SF_PASSWORD = 'Sairam12345@'
-SF_SECURITY_TOKEN = 'Iy4DWr8USHwJFf8h2EzPDM1Y'
+SF_SECURITY_TOKEN = 'FTvAU65IiITF4541K2Y5tDgi'
 SF_DOMAIN = 'login'
 
 # Initialize Salesforce connection
