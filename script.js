@@ -9,7 +9,7 @@ const keywords = [
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
     "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame", 
+    "frame"
 ];
 
 let currentFacingMode = "environment";
@@ -123,6 +123,8 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         return;
     }
 
+    console.log("Exporting Data to Salesforce:", extractedData);  // Debugging
+
     try {
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
@@ -133,6 +135,8 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         });
 
         const result = await response.json();
+        console.log("Backend Response:", result);  // Debugging
+
         if (response.ok) {
             alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
