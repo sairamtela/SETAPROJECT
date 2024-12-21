@@ -4,9 +4,9 @@ from simple_salesforce import Salesforce
 import os
 
 # Salesforce credentials
-SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
-SF_PASSWORD = 'Sairam12345@'
-SF_SECURITY_TOKEN = 'FTvAU65IiITF4541K2Y5tDgi'
+SF_USERNAME = 'gopichandra@sathkrutha.com'
+SF_PASSWORD = 'Gopi@12345'
+SF_SECURITY_TOKEN = 'TIfdMTLPm7V7fFuNmzcofcMt'
 SF_DOMAIN = 'login'
 
 # Temporary path for saving captured frame
@@ -89,7 +89,7 @@ def save_to_salesforce(sf, extracted_text):
 
         # Replace 'Your_Salesforce_Object__c' with the actual Salesforce object API name
         print(f"Structured Data to Save: {structured_data}")
-        result = sf.SETA_product_details__c.create(structured_data)  # Replace with your object name
+        result = sf.SETA_DETAILS__c.create(structured_data)  # Replace with your object name
 
         # Debug: Log the Salesforce response
         print(f"Record created successfully in Salesforce with ID: {result['id']}")
