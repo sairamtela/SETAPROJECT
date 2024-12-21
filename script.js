@@ -9,13 +9,10 @@ const keywords = [
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
     "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame", 
+    "frame",
 ];
 
-let currentFacingMode = "environment";
-let stream = null;
 let extractedData = {};
-let allData = [];
 
 // Elements
 const video = document.getElementById('camera');
@@ -25,23 +22,13 @@ const outputDiv = document.getElementById('outputAttributes');
 // Start Camera
 async function startCamera() {
     try {
-        if (stream) stream.getTracks().forEach(track => track.stop());
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
-        video.play();
     } catch (err) {
-        alert("Camera access denied or unavailable.");
-        console.error(err);
+        console.error("Camera access error:", err);
+        alert("Unable to access camera.");
     }
 }
-
-// Flip Camera
-document.getElementById('flipButton').addEventListener('click', () => {
-    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera();
-});
 
 // Capture Image
 document.getElementById('captureButton').addEventListener('click', () => {
@@ -61,48 +48,33 @@ document.getElementById('captureButton').addEventListener('click', () => {
 async function processImage(img) {
     outputDiv.innerHTML = "<p>Processing...</p>";
     try {
-        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+        const result = await Tesseract.recognize(img, 'eng');
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            processTextToAttributes(result.data.text);
+            mapExtractedText(result.data.text);
         } else {
-            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+            outputDiv.innerHTML = "<p>No text detected. Try again.</p>";
         }
     } catch (error) {
-        console.error("Tesseract.js Error:", error);
-        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
+        console.error("OCR Error:", error);
+        outputDiv.innerHTML = "<p>OCR processing failed.</p>";
     }
 }
 
-// Map Extracted Text to Keywords and Capture Remaining Text
-function processTextToAttributes(text) {
+// Map Extracted Text to Keywords
+function mapExtractedText(text) {
     const lines = text.split("\n");
-    extractedData = {};
-    let remainingText = [];
+    extractedData = { "Other Specifications": text };
 
-    keywords.forEach(keyword => {
-        for (let line of lines) {
-            if (line.includes(keyword)) {
-                const value = line.split(":")[1]?.trim() || "-";
-                if (value !== "-") {
-                    extractedData[keyword] = value;
-                }
-                break;
-            }
-        }
-    });
-
-    // Capture remaining text that is not matched with keywords
     lines.forEach(line => {
-        if (!Object.values(extractedData).some(value => line.includes(value))) {
-            remainingText.push(line.trim());
-        }
+        keywords.forEach(keyword => {
+            if (line.includes(keyword)) {
+                const value = line.split(":")[1]?.trim() || "";
+                if (value) extractedData[keyword] = value;
+            }
+        });
     });
 
-    // Add remaining text as "Other Specifications"
-    extractedData["Other Specifications"] = remainingText.join(" ");
-
-    allData.push(extractedData);
     displayData();
 }
 
@@ -118,30 +90,27 @@ function displayData() {
 
 // Export to Salesforce
 document.getElementById('exportButton').addEventListener('click', async () => {
-    if (Object.keys(extractedData).length === 0) {
-        alert("No extracted data available to export. Please process an image first.");
+    if (!Object.keys(extractedData).length) {
+        alert("No data to export. Capture an image first.");
         return;
     }
 
     try {
-        console.log("Exporting Data to Salesforce:", extractedData);
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ extractedData }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ extractedData })
         });
 
         const result = await response.json();
         if (response.ok) {
-            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
+            alert(`Record created in Salesforce. Record ID: ${result.record_id}`);
         } else {
-            alert(`Error creating record in Salesforce: ${result.error}`);
+            alert(`Error: ${result.error}`);
         }
     } catch (error) {
-        console.error("Error exporting data to Salesforce:", error);
-        alert("Error exporting data to Salesforce. Check console for details.");
+        console.error("Export Error:", error);
+        alert("Failed to export data to Salesforce.");
     }
 });
 
