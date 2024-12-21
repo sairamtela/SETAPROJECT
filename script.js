@@ -44,85 +44,98 @@ document.getElementById('flipButton').addEventListener('click', () => {
     startCamera();
 });
 
-// Capture Image
-document.getElementById('captureButton').addEventListener('click', () => {
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from simple_salesforce import Salesforce
 
-    canvas.toBlob(blob => {
-        const img = new Image();
-        img.src = URL.createObjectURL(blob);
-        img.onload = () => processImage(img);
-    }, 'image/png');
-});
+app = Flask(__name__)
+CORS(app)
 
-// Process Image with Tesseract.js
-async function processImage(img) {
-    outputDiv.innerHTML = "<p>Processing...</p>";
-    try {
-        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
-        if (result && result.data.text) {
-            console.log("OCR Result:", result.data.text);
-            processTextToAttributes(result.data.text);
-        } else {
-            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
-        }
-    } catch (error) {
-        console.error("Tesseract.js Error:", error);
-        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
-    }
-}
+# Salesforce credentials
+SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
+SF_PASSWORD = 'Sairam12345@'
+SF_SECURITY_TOKEN = 'FTvAU65IiITF4541K2Y5tDgi'
+SF_DOMAIN = 'login'
 
-// Map Extracted Text to Keywords
-function processTextToAttributes(text) {
-    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    extractedData = {};
+# Initialize Salesforce connection
+def initialize_salesforce():
+    try:
+        sf = Salesforce(
+            username=SF_USERNAME,
+            password=SF_PASSWORD,
+            security_token=SF_SECURITY_TOKEN,
+            domain=SF_DOMAIN
+        )
+        print("Salesforce connection established.")
+        return sf
+    except Exception as e:
+        print(f"Error initializing Salesforce: {e}")
+        return None
 
-    if (lines.length > 0) {
-        // Set the first line as "Product Name"
-        extractedData["Product Name"] = lines[0];
-    }
+sf = initialize_salesforce()
 
-    const otherSpecifications = [];
-
-    keywords.forEach(keyword => {
-        for (let line of lines.slice(1)) { // Exclude the first line
-            if (line.includes(keyword)) {
-                const value = line.split(":")[1]?.trim() || "-";
-                if (value !== "-") {
-                    extractedData[keyword] = value;
-                }
-                break;
-            }
-        }
-    });
-
-    // Add unclassified text to "Other Specifications"
-    lines.slice(1).forEach(line => {
-        const isClassified = keywords.some(keyword => line.includes(keyword));
-        if (!isClassified) {
-            otherSpecifications.push(line);
-        }
-    });
-
-    if (otherSpecifications.length > 0) {
-        extractedData["Other Specifications"] = otherSpecifications.join(", ");
+# Parsing function to map extracted data to Salesforce fields
+def parse_extracted_data(data):
+    """Parse the extracted data into Salesforce fields."""
+    fields_mapping = {
+        "Brand": "Brand__c",
+        "Colour": "Colour__c",
+        "Power": "Power__c",
+        "Voltage": "Voltage__c",
+        "Phase": "Phase__c",
+        "Material": "Material__c",
+        "Frequency": "Frequency__c",
+        "Product Name": "Product_Name__c",
+        "Usage/Application": "Usage_Application__c",
     }
 
-    allData.push(extractedData);
-    displayData();
-}
+    # Split the "Other Specifications" field into lines for processing
+    extracted_text = data.get("Other Specifications", "")
+    lines = extracted_text.split("\n")
 
-// Display Data
-function displayData() {
-    outputDiv.innerHTML = "";
-    Object.entries(extractedData).forEach(([key, value]) => {
-        if (value) {
-            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-        }
-    });
+    record = {}
+    for line in lines:
+        for keyword, field_name in fields_mapping.items():
+            if keyword.lower() in line.lower():
+                # Extract value following the keyword
+                value_start_index = line.lower().find(keyword.lower()) + len(keyword)
+                value = line[value_start_index:].strip()
+                record[field_name] = value
+                break
+
+    # Add fallback values for required fields
+    record["Name"] = data.get("Product Name", "Default Product Name")
+    record["Other_Specifications__c"] = data.get("Other Specifications", "")
+    return record
+
+@app.route('/export_to_salesforce', methods=['POST'])
+def export_to_salesforce():
+    if not sf:
+        return jsonify({"error": "Salesforce connection failed"}), 500
+
+    # Get data from the frontend
+    data = request.json.get('extractedData', {})
+    print("Received Extracted Data:", data)  # Debugging
+
+    if not data:
+        return jsonify({"error": "No extracted data received"}), 400
+
+    try:
+        # Parse extracted data
+        record = parse_extracted_data(data)
+        print("Mapped Salesforce Record:", record)  # Debugging
+
+        # Replace 'SETA_product_details__c' with your actual Salesforce object API name
+        result = sf.SETA_product_details__c.create(record)
+        print(f"Record created in Salesforce with ID: {result['id']}")
+        return jsonify({"success": True, "record_id": result['id']}), 201
+    except Exception as e:
+        print(f"Error saving data to Salesforce: {e}")
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
 }
 
 // Export to Salesforce
