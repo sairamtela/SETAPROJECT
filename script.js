@@ -123,32 +123,35 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         return;
     }
 
-    // Ensure all fields are sanitized as strings
+    // Sanitize and prepare the data for export
     const sanitizedData = {};
     for (const [key, value] of Object.entries(extractedData)) {
         if (Array.isArray(value)) {
-            sanitizedData[key] = value.join(", "); // Convert array to comma-separated string
+            sanitizedData[key] = value.join(", "); // Convert array to a string
         } else if (value !== undefined && value !== null) {
-            sanitizedData[key] = value.toString(); // Convert other values to strings
+            sanitizedData[key] = value.toString(); // Ensure string format
         } else {
-            sanitizedData[key] = ""; // Handle null or undefined as empty string
+            sanitizedData[key] = ""; // Handle null or undefined values
         }
     }
 
+    // Debug: Log sanitized data to verify structure
+    console.log("Sanitized Data to be sent:", sanitizedData);
+
     try {
-        console.log("Exporting Data to Salesforce:", sanitizedData);
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(sanitizedData), // Send sanitizedData directly
+            body: JSON.stringify({ data: sanitizedData }), // Nest data under a `data` key
         });
 
         const result = await response.json();
         if (response.ok) {
             alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
+            console.error("Salesforce Error Response:", result);
             alert(`Error creating record in Salesforce: ${result.error}`);
         }
     } catch (error) {
