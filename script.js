@@ -1,15 +1,15 @@
 const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Product name", "Voltage", "Phase", "Brand", "Power", "Other Specifications",
+    "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Material", "Type",
     "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Delivery size", "Size", "MRP", "Use before", "Height",
     "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
     "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Motor horsepower", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame"
+    "Pipesize", "Manufacturer", "Office", "SR number", "RPM", "frame"
 ];
 
 let currentFacingMode = "environment";
