@@ -5,11 +5,11 @@ const keywords = [
     "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
     "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
     "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM",
-    "frame"
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "frame",
 ];
 
 let currentFacingMode = "environment";
@@ -21,38 +21,44 @@ let allData = [];
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const outputDiv = document.getElementById('outputAttributes');
-const flipButton = document.getElementById('flipButton');
-const captureButton = document.getElementById('captureButton');
-const exportButton = document.getElementById('exportButton');
-const exportExcelButton = document.getElementById('exportExcelButton');
 
-// Initialize Camera
+// Start Camera
 async function startCamera() {
     try {
-        // Stop any active streams
+        // Stop any previous streams
         if (stream) stream.getTracks().forEach(track => track.stop());
 
-        // Start the camera
+        // Request access to the camera
         stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: currentFacingMode, width: 1280, height: 720 }
         });
+
+        // Bind the video stream to the video element
         video.srcObject = stream;
         video.play();
         console.log("Camera started successfully.");
     } catch (err) {
-        console.error("Camera access error:", err);
-        alert("Unable to access the camera. Check your permissions and try again.");
+        console.error("Error accessing the camera:", err);
+
+        // Handle specific errors
+        if (err.name === "NotAllowedError") {
+            alert("Camera access was denied. Please allow camera permissions in your browser settings and refresh the page.");
+        } else if (err.name === "NotFoundError") {
+            alert("No camera device found. Please ensure a camera is connected.");
+        } else {
+            alert("An error occurred while accessing the camera. Check the console for details.");
+        }
     }
 }
 
 // Flip Camera
-flipButton.addEventListener('click', () => {
+document.getElementById('flipButton').addEventListener('click', () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera();
 });
 
 // Capture Image
-captureButton.addEventListener('click', () => {
+document.getElementById('captureButton').addEventListener('click', () => {
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -88,7 +94,6 @@ function processTextToAttributes(text) {
     extractedData = {};
     let remainingText = [];
 
-    // Map keywords to extracted text
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.includes(keyword)) {
@@ -101,14 +106,16 @@ function processTextToAttributes(text) {
         }
     });
 
-    // Capture unmatched text as "Other Specifications"
+    // Capture remaining text that is not matched with keywords
     lines.forEach(line => {
         if (!Object.values(extractedData).some(value => line.includes(value))) {
             remainingText.push(line.trim());
         }
     });
 
+    // Add remaining text as "Other Specifications"
     extractedData["Other Specifications"] = remainingText.join(" ");
+
     allData.push(extractedData);
     displayData();
 }
@@ -124,7 +131,7 @@ function displayData() {
 }
 
 // Export to Salesforce
-exportButton.addEventListener('click', async () => {
+document.getElementById('exportButton').addEventListener('click', async () => {
     if (!Object.keys(extractedData).length) {
         alert("No data to export. Capture an image first.");
         return;
@@ -150,7 +157,7 @@ exportButton.addEventListener('click', async () => {
 });
 
 // Export to Excel
-exportExcelButton.addEventListener('click', () => {
+document.getElementById('exportExcelButton').addEventListener('click', () => {
     if (!allData.length) {
         alert("No data to export to Excel. Capture an image first.");
         return;
@@ -165,5 +172,5 @@ exportExcelButton.addEventListener('click', () => {
     XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
 });
 
-// Start Camera on Load
+// Start Camera on Page Load
 startCamera();
