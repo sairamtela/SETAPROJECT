@@ -93,12 +93,12 @@ function processTextToAttributes(text) {
     displayData();
 }
 
-// Display Extracted Data
+// Display Data
 function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
-            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+            outputDiv.innerHTML += <p><strong>${key}:</strong> ${value}</p>;
         }
     });
 }
