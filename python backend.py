@@ -1,117 +1,128 @@
+import cv2
 import easyocr
-import re
-import os
+from simple_salesforce import Salesforce
+
+# Salesforce credentials
+SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
+SF_PASSWORD = 'Sairam12345@'
+SF_SECURITY_TOKEN = 'Iy4DWr8USHwJFf8h2EzPDM1Y'
+SF_DOMAIN = 'login'
+
+# Initialize Salesforce connection
+def initialize_salesforce():
+    try:
+        sf = Salesforce(
+            username=SF_USERNAME, 
+            password=SF_PASSWORD, 
+            security_token=SF_SECURITY_TOKEN, 
+            domain=SF_DOMAIN
+        )
+        print("Salesforce connection established.")
+        return sf
+    except Exception as e:
+        print(f"Error initializing Salesforce: {e}")
+        return None
 
 # Initialize EasyOCR Reader
 def initialize_reader():
     try:
         reader = easyocr.Reader(['en'])
+        print("OCR reader initialized.")
         return reader
     except Exception as e:
-        print("Error initializing EasyOCR Reader:", e)
+        print(f"Error initializing EasyOCR Reader: {e}")
         return None
 
-# Load and Process the Image
-def load_image(image_path):
-    if not os.path.exists(image_path):
-        print(f"Error: The image path '{image_path}' does not exist.")
+# Initialize Camera
+def initialize_camera():
+    print("Initializing camera...")
+    cap = cv2.VideoCapture(0)  # Use the correct index for your camera
+    if not cap.isOpened():
+        print("Error: Camera not accessible.")
         return None
-    try:
-        print(f"Loading image from: {image_path}")
-        return image_path
-    except Exception as e:
-        print("Error loading image:", e)
-        return None
+    print("Camera initialized successfully.")
+    return cap
 
-# Perform OCR on the Image
-def perform_ocr(reader, image_path):
+# Capture a frame from the camera
+def capture_frame(cap):
+    if not cap:
+        print("Error: Camera not initialized.")
+        return None
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Failed to capture frame.")
+        return None
+    print("Frame captured successfully.")
+    return frame
+
+# Perform OCR on the captured frame
+def perform_ocr(reader, frame):
     try:
-        results = reader.readtext(image_path)
+        # Save frame temporarily for OCR processing
+        temp_image_path = "captured_frame.jpg"
+        cv2.imwrite(temp_image_path, frame)
+
+        # Perform OCR
+        results = reader.readtext(temp_image_path)
         extracted_text = "\n".join([result[1] for result in results])
-        print("\nFull Extracted Text:")
+        print("\nExtracted Text:")
         print(extracted_text)
         return extracted_text
     except Exception as e:
-        print("Error performing OCR:", e)
+        print(f"Error performing OCR: {e}")
         return ""
 
-# Function to Extract Structured Data
-def extract_structured_data(text):
-    structured_data = {}
-    lines = text.split("\n")
-
-    # Assign the first line as the Product Name
-    if lines:
-        structured_data["Product Name"] = lines[0].strip()
-
-    # Patterns for extracting data
-    patterns = {
-        "Company Name": r"(?i)(Company Name|Company):\s*(.*)",
-        "Address": r"(?i)(Address):\s*(.*)",
-        "Phone": r"(?i)(Phone|Contact):\s*(\+?\d{10,15})",
-        "GSTIN": r"(?i)(GSTIN):\s*([A-Z0-9]+)",
-        "PAN Number": r"(?i)(PAN\s*Number|PAN):\s*([A-Z]{5}[0-9]{4}[A-Z])",
-        "Invoice Number": r"(?i)(Invoice\s*Number|Invoice No):\s*(\d+)",
-        "Invoice Date": r"(?i)(Invoice\s*Date|Date):\s*(.*)"
-        "Product Name": r"Product\s*[:;-]\s*(.*?)(?=\||Total|\n)",
-        "Model": r"Model\s*[:;-]\s*(.*?)\s*kW",
-        "kW / HP": r"kW\s*/\s*HP\s*:\s*([\d./]+)",
-        "Phase": r"Phase\s*:\s*(\w+)",
-        "Speed": r"Speed\s*:\s*(\d+\s*RPM)",
-        "Net Quantity": r"Net\s*Quantity\s*:\s*(\S+)",
-        "Gross Weight": r"Gross\s*Weight\s*:\s*([\d.]+\s*\w+)",
-        "Month & Year of MFG": r"Month\s*&\s*Year\s*of\s*MFG\s*:\s*(\w+\s*\d+)",
-        "MRP": r"MRP.*?([\d.,]+\s*\(Inclusive\s*of\s*.*?\))",
-        "Serial No.": r"Serial\s*No\s*[:;-]\s*(.*?)\|",
-        "Manufacturer": r"Sold\s*By\s*[:;-]\s*(.*?)(?=,|\n)",
-        "Address": r"DELIVERY\s*ADDRESS[:;-]\s*(.*?)(?=\s*Courler|\n)",
-        "Customer Care": r"Customer\s*Care\s*[:;-]\s*(\+?\d+)",
-        "Email": r"Email\s*[:;-]\s*(\S+)",
-        "Name": r"Name\s*[:;-]\s*(.*?)(?=Model|Date|$)",
-        "Date": r"Date\s*[:;-]\s*([0-9-/]+)",
-        "Tracking ID": r"Courler\s*AWB\s*No\s*[:;-]\s*(\S+)",
-        "GSTIN": r"GSTIN\s*No\s*[:;-]\s*([A-Z0-9]+)"
-    }
-
-    # Match patterns in text
-    for field, pattern in patterns.items():
-        match = re.search(pattern, text)
-        if match:
-            value = match.group(2).strip() if len(match.groups()) > 1 else match.group(1).strip()
-            structured_data[field] = value
-
-    return structured_data
+# Save extracted data to Salesforce
+def save_to_salesforce(sf, extracted_text):
+    try:
+        # Create a simple record in Salesforce (adjust fields as needed)
+        record = {
+            'Name': extracted_text[:80]  # Truncate to 80 characters for the Name field
+        }
+        # Replace 'Your_Salesforce_Object__c' with the actual Salesforce object API name
+        result = sf.Your_Salesforce_Object__c.create(record)
+        print(f"Record created successfully in Salesforce with ID: {result['id']}")
+    except Exception as e:
+        print(f"Error saving data to Salesforce: {e}")
 
 # Main Execution
 def main():
-    # Path to the image
-    image_path = "image.png"  # Replace with the correct path to your image
+    # Initialize Salesforce
+    sf = initialize_salesforce()
+    if not sf:
+        print("Salesforce initialization failed. Exiting...")
+        return
 
-    # Initialize EasyOCR Reader
+    # Initialize OCR Reader
     reader = initialize_reader()
     if not reader:
+        print("OCR reader initialization failed. Exiting...")
         return
 
-    # Load the Image
-    if not load_image(image_path):
+    # Initialize Camera
+    cap = initialize_camera()
+    if not cap:
+        print("Camera initialization failed. Exiting...")
         return
 
-    # Perform OCR
-    extracted_text = perform_ocr(reader, image_path)
-    if not extracted_text:
-        return
+    # Capture a frame
+    frame = capture_frame(cap)
+    if frame is not None:
+        cv2.imshow('Captured Frame', frame)
+        cv2.waitKey(0)
 
-    # Extract Structured Data
-    structured_data = extract_structured_data(extracted_text)
+        # Perform OCR on the frame
+        extracted_text = perform_ocr(reader, frame)
 
-    # Print Structured Data
-    print("\nStructured Data:")
-    if structured_data:
-        for key, value in structured_data.items():
-            print(f"{key}: {value}")
+        # Save extracted data to Salesforce
+        if extracted_text:
+            save_to_salesforce(sf, extracted_text)
+
+        # Release camera resources
+        cap.release()
+        cv2.destroyAllWindows()
     else:
-        print("No valid data found in the extracted text.")
+        print("Failed to capture frame. Exiting...")
 
-# Run the Script
 if __name__ == "__main__":
     main()
