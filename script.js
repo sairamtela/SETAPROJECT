@@ -48,33 +48,48 @@ document.getElementById('captureButton').addEventListener('click', () => {
 async function processImage(img) {
     outputDiv.innerHTML = "<p>Processing...</p>";
     try {
-        const result = await Tesseract.recognize(img, 'eng');
+        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            mapExtractedText(result.data.text);
+            processTextToAttributes(result.data.text);
         } else {
-            outputDiv.innerHTML = "<p>No text detected. Try again.</p>";
+            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
     } catch (error) {
-        console.error("OCR Error:", error);
-        outputDiv.innerHTML = "<p>OCR processing failed.</p>";
+        console.error("Tesseract.js Error:", error);
+        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
     }
 }
 
-// Map Extracted Text to Keywords
-function mapExtractedText(text) {
+// Map Extracted Text to Keywords and Capture Remaining Text
+function processTextToAttributes(text) {
     const lines = text.split("\n");
-    extractedData = { "Other Specifications": text };
+    extractedData = {};
+    let remainingText = [];
 
-    lines.forEach(line => {
-        keywords.forEach(keyword => {
+    keywords.forEach(keyword => {
+        for (let line of lines) {
             if (line.includes(keyword)) {
-                const value = line.split(":")[1]?.trim() || "";
-                if (value) extractedData[keyword] = value;
+                const value = line.split(":")[1]?.trim() || "-";
+                if (value !== "-") {
+                    extractedData[keyword] = value;
+                }
+                break;
             }
-        });
+        }
     });
 
+    // Capture remaining text that is not matched with keywords
+    lines.forEach(line => {
+        if (!Object.values(extractedData).some(value => line.includes(value))) {
+            remainingText.push(line.trim());
+        }
+    });
+
+    // Add remaining text as "Other Specifications"
+    extractedData["Other Specifications"] = remainingText.join(" ");
+
+    allData.push(extractedData);
     displayData();
 }
 
