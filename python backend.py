@@ -1,29 +1,6 @@
-import os
-import re
 import easyocr
-from flask import Flask, request, jsonify
-from simple_salesforce import Salesforce
-import logging
-
-# Configure Flask app
-app = Flask(__name__)
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Salesforce credentials
-SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
-SF_PASSWORD = 'Sairam12345@'
-SF_SECURITY_TOKEN = 'Iy4DWr8USHwJFf8h2EzPDM1Y'
-SF_DOMAIN = 'login'  # Specify Salesforce domain
-
-# Initialize Salesforce connection
-try:
-    sf = Salesforce(username=SF_USERNAME, password=SF_PASSWORD, security_token=SF_SECURITY_TOKEN, domain=SF_DOMAIN)
-    logging.info("Salesforce service initialized successfully.")
-except Exception as e:
-    logging.error(f"Error initializing Salesforce service: {e}")
-    sf = None
+import re
+import os
 
 # Initialize EasyOCR Reader
 def initialize_reader():
@@ -31,7 +8,19 @@ def initialize_reader():
         reader = easyocr.Reader(['en'])
         return reader
     except Exception as e:
-        logging.error(f"Error initializing EasyOCR Reader: {e}")
+        print("Error initializing EasyOCR Reader:", e)
+        return None
+
+# Load and Process the Image
+def load_image(image_path):
+    if not os.path.exists(image_path):
+        print(f"Error: The image path '{image_path}' does not exist.")
+        return None
+    try:
+        print(f"Loading image from: {image_path}")
+        return image_path
+    except Exception as e:
+        print("Error loading image:", e)
         return None
 
 # Perform OCR on the Image
@@ -39,91 +28,90 @@ def perform_ocr(reader, image_path):
     try:
         results = reader.readtext(image_path)
         extracted_text = "\n".join([result[1] for result in results])
-        logging.info("OCR completed successfully.")
+        print("\nFull Extracted Text:")
+        print(extracted_text)
         return extracted_text
     except Exception as e:
-        logging.error(f"Error performing OCR: {e}")
+        print("Error performing OCR:", e)
         return ""
 
-# Extract Structured Data
+# Function to Extract Structured Data
 def extract_structured_data(text):
     structured_data = {}
+    lines = text.split("\n")
+
+    # Assign the first line as the Product Name
+    if lines:
+        structured_data["Product Name"] = lines[0].strip()
+
+    # Patterns for extracting data
     patterns = {
-        "Product Name": r"Product\s*[:;-]\s*(.*?)(?=\||Total|\n)",
         "Company Name": r"(?i)(Company Name|Company):\s*(.*)",
         "Address": r"(?i)(Address):\s*(.*)",
         "Phone": r"(?i)(Phone|Contact):\s*(\+?\d{10,15})",
         "GSTIN": r"(?i)(GSTIN):\s*([A-Z0-9]+)",
+        "PAN Number": r"(?i)(PAN\s*Number|PAN):\s*([A-Z]{5}[0-9]{4}[A-Z])",
         "Invoice Number": r"(?i)(Invoice\s*Number|Invoice No):\s*(\d+)",
+        "Invoice Date": r"(?i)(Invoice\s*Date|Date):\s*(.*)"
+        "Product Name": r"Product\s*[:;-]\s*(.*?)(?=\||Total|\n)",
         "Model": r"Model\s*[:;-]\s*(.*?)\s*kW",
         "kW / HP": r"kW\s*/\s*HP\s*:\s*([\d./]+)",
         "Phase": r"Phase\s*:\s*(\w+)",
         "Speed": r"Speed\s*:\s*(\d+\s*RPM)",
+        "Net Quantity": r"Net\s*Quantity\s*:\s*(\S+)",
         "Gross Weight": r"Gross\s*Weight\s*:\s*([\d.]+\s*\w+)",
+        "Month & Year of MFG": r"Month\s*&\s*Year\s*of\s*MFG\s*:\s*(\w+\s*\d+)",
         "MRP": r"MRP.*?([\d.,]+\s*\(Inclusive\s*of\s*.*?\))",
-        "Serial Number": r"Serial\s*No\s*[:;-]\s*(.*?)\|",
-        "Manufacturer": r"Sold\s*By\s*[:;-]\s*(.*?)(?=,|\n)"
+        "Serial No.": r"Serial\s*No\s*[:;-]\s*(.*?)\|",
+        "Manufacturer": r"Sold\s*By\s*[:;-]\s*(.*?)(?=,|\n)",
+        "Address": r"DELIVERY\s*ADDRESS[:;-]\s*(.*?)(?=\s*Courler|\n)",
+        "Customer Care": r"Customer\s*Care\s*[:;-]\s*(\+?\d+)",
+        "Email": r"Email\s*[:;-]\s*(\S+)",
+        "Name": r"Name\s*[:;-]\s*(.*?)(?=Model|Date|$)",
+        "Date": r"Date\s*[:;-]\s*([0-9-/]+)",
+        "Tracking ID": r"Courler\s*AWB\s*No\s*[:;-]\s*(\S+)",
+        "GSTIN": r"GSTIN\s*No\s*[:;-]\s*([A-Z0-9]+)"
     }
 
+    # Match patterns in text
     for field, pattern in patterns.items():
         match = re.search(pattern, text)
         if match:
-            structured_data[field] = match.group(1).strip()
+            value = match.group(2).strip() if len(match.groups()) > 1 else match.group(1).strip()
+            structured_data[field] = value
 
     return structured_data
 
-# Export Data to Salesforce
-@app.route('/export_to_salesforce', methods=['POST'])
-def export_to_salesforce():
-    if sf is None:
-        return jsonify({"error": "Salesforce service is not initialized"}), 500
+# Main Execution
+def main():
+    # Path to the image
+    image_path = "image.png"  # Replace with the correct path to your image
 
-    # Get data from frontend
-    data = request.json
-    if not data:
-        return jsonify({"error": "No data received"}), 400
-
-    try:
-        # Map extracted data to Salesforce fields
-        record = {
-            'Name': data.get('Product Name', 'Default Name'),
-            'Company_name__c': data.get('Company Name'),
-            'Gross_weight__c': data.get('Gross Weight'),
-            'GSTIN__c': data.get('GSTIN'),
-            'Serial_number__c': data.get('Serial Number'),
-            'MRP__c': data.get('MRP'),
-            'Phase__c': data.get('Phase'),
-            'Speed__c': data.get('Speed'),
-            'Model__c': data.get('Model'),
-        }
-
-        # Create record in Salesforce
-        result = sf.SETA_product_details__c.create(record)
-        logging.info(f"Created record in Salesforce with ID: {result['id']}")
-        return jsonify({"success": True, "record_id": result['id']}), 201
-    except Exception as e:
-        logging.error(f"Error creating record in Salesforce: {e}")
-        return jsonify({"error": str(e)}), 500
-
-# Process Image and Extract Data
-@app.route('/process_image', methods=['POST'])
-def process_image():
-    image_path = request.json.get('image_path')
-    if not os.path.exists(image_path):
-        return jsonify({"error": f"Image path '{image_path}' does not exist"}), 400
-
+    # Initialize EasyOCR Reader
     reader = initialize_reader()
     if not reader:
-        return jsonify({"error": "Failed to initialize OCR reader"}), 500
+        return
+
+    # Load the Image
+    if not load_image(image_path):
+        return
 
     # Perform OCR
     extracted_text = perform_ocr(reader, image_path)
     if not extracted_text:
-        return jsonify({"error": "Failed to extract text from image"}), 500
+        return
 
     # Extract Structured Data
     structured_data = extract_structured_data(extracted_text)
-    return jsonify({"structured_data": structured_data}), 200
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    # Print Structured Data
+    print("\nStructured Data:")
+    if structured_data:
+        for key, value in structured_data.items():
+            print(f"{key}: {value}")
+    else:
+        print("No valid data found in the extracted text.")
+
+# Run the Script
+if __name__ == "__main__":
+    main()
