@@ -3,7 +3,7 @@ from simple_salesforce import Salesforce
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS to allow frontend requests
+CORS(app)
 
 # Salesforce credentials
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
@@ -51,10 +51,6 @@ def export_to_salesforce():
             'Other_Specifications__c': data.get('Other Specifications', None),
         }
         print("Mapped Salesforce Record:", record)  # Debugging
-
-        # Ensure at least one required field is present
-        if not any(value for value in record.values()):
-            return jsonify({"error": "No valid data to save"}), 400
 
         # Replace 'SETA_product_details__c' with your actual Salesforce object API name
         result = sf.SETA_product_details__c.create(record)
