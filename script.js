@@ -1,6 +1,15 @@
 const keywords = [
-    "Power", "Power Source", "Engine Type", "Motor Phase", "Voltage", "Frequency",
-    "Material", "Motor Speed", "Cooling Method", "Model"
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM", 
+    "frame", "Other Specifications"
 ];
 
 let extractedData = {};
@@ -35,8 +44,7 @@ document.getElementById("captureButton").addEventListener("click", async () => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const img = new Image();
-    img.src = canvas.toDataURL(); // Get the image as a data URI
-    console.log("Image Data URI:", img.src); // Log the image for debugging
+    img.src = canvas.toDataURL();
     img.onload = () => processImage(img);
 });
 
@@ -44,11 +52,7 @@ document.getElementById("captureButton").addEventListener("click", async () => {
 async function processImage(img) {
     try {
         document.getElementById("loader").style.display = "block";
-        const result = await Tesseract.recognize(img, "eng", {
-            logger: m => console.log(m) // Log progress
-        });
-
-        console.log("Raw OCR Output:", result.data.text); // Log raw text for debugging
+        const result = await Tesseract.recognize(img, "eng");
         mapExtractedData(result.data.text);
     } catch (error) {
         alert("Error processing the image. Please try again.");
@@ -60,8 +64,9 @@ async function processImage(img) {
 
 // Map extracted text to predefined keywords
 function mapExtractedData(text) {
-    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
+    const lines = text.split("\n");
     extractedData = {};
+    let remainingText = [];
 
     // Match lines to keywords
     keywords.forEach(keyword => {
@@ -75,6 +80,12 @@ function mapExtractedData(text) {
         });
     });
 
+    // Remaining unmatched text goes into Other Specifications
+    remainingText = lines.filter(line => line.trim() !== "");
+    if (remainingText.length > 0) {
+        extractedData["Other Specifications"] = remainingText.join(" ");
+    }
+
     // Display the extracted data
     displayExtractedData();
 }
@@ -84,13 +95,8 @@ function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
     outputDiv.innerHTML = ""; // Clear previous data
 
-    if (Object.keys(extractedData).length === 0) {
-        outputDiv.innerHTML = "<p>No data yet...</p>";
-        return;
-    }
-
     Object.entries(extractedData).forEach(([key, value]) => {
-        if (value) {
+        if (value && value !== "-") { // Only display attributes with valid values
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
