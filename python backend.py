@@ -63,6 +63,7 @@ def create_product_record_in_salesforce(data):
 
     try:
         result = sf.SETA_product_details__c.create(record)
+        logging.info(f"Salesforce record creation response: {result}")
         return result
     except Exception as e:
         logging.error(f"Failed to create Salesforce record: {e}")
@@ -137,8 +138,15 @@ def export_data():
         # Step 1: Create a Salesforce record
         try:
             sf_result = create_product_record_in_salesforce(data)
-            salesforce_id = sf_result['id']
-            logging.info(f"Record created in Salesforce with ID: {salesforce_id}")
+            salesforce_id = sf_result.get('id')
+            if salesforce_id:
+                logging.info(f"Record created in Salesforce with ID: {salesforce_id}")
+            else:
+                logging.warning("Salesforce did not return a record ID. Record creation may have failed.")
+                return jsonify({
+                    'message': 'Failed to create Salesforce record.',
+                    'salesforce_response': sf_result
+                }), 500
         except Exception as e:
             return jsonify({'error': f"Salesforce Error: {e}"}), 500
 
@@ -151,7 +159,7 @@ def export_data():
         # Return success response
         return jsonify({
             'salesforce_id': salesforce_id,
-            'message': 'Export successful.',
+            'message': 'Export successful. Record created in Salesforce.',
             'excel_file_path': file_path
         }), 200
 
