@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OCR to Salesforce</title>
+    <title>OCR Image Capture</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
             text-align: center;
             background-color: #f9f9f9;
         }
+
         .container {
             margin: 20px auto;
             padding: 20px;
@@ -16,6 +19,7 @@
             border-radius: 10px;
             max-width: 600px;
         }
+
         video, canvas {
             width: 100%;
             max-width: 500px;
@@ -23,6 +27,7 @@
             border: 2px solid #00796b;
             border-radius: 10px;
         }
+
         button {
             padding: 10px 20px;
             font-size: 16px;
@@ -33,9 +38,16 @@
             border-radius: 5px;
             cursor: pointer;
         }
+
         button:hover {
             background-color: #004d40;
         }
+
+        h3 {
+            text-decoration: underline;
+            margin-top: 20px;
+        }
+
         #outputAttributes {
             text-align: left;
             margin-top: 20px;
@@ -44,7 +56,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>OCR to Salesforce</h1>
+        <h1>OCR Image Capture</h1>
         <video id="camera" autoplay playsinline></video>
         <canvas id="canvas" style="display:none;"></canvas>
         <div>
