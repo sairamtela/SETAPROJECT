@@ -66,7 +66,6 @@ async function processImage(img) {
 function mapExtractedData(text) {
     const lines = text.split("\n");
     extractedData = {};
-    let remainingText = [];
 
     // Match lines to keywords
     keywords.forEach(keyword => {
@@ -79,12 +78,6 @@ function mapExtractedData(text) {
             }
         });
     });
-
-    // Remaining unmatched text goes into Other Specifications
-    remainingText = lines.filter(line => line.trim() !== "");
-    if (remainingText.length > 0) {
-        extractedData["Other Specifications"] = remainingText.join(" ");
-    }
 
     // Display the extracted data
     displayExtractedData();
