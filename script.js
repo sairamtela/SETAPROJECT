@@ -14,12 +14,13 @@ function startCamera() {
 
     // Get media devices and start the camera
     navigator.mediaDevices.getUserMedia({
-        video: { facingMode: currentFacingMode }, // Default to back camera
+        video: { facingMode: currentFacingMode }, // Use specified camera
     })
     .then(stream => {
         videoStream = stream; // Save the stream globally
         video.srcObject = stream; // Set the video stream to the video element
         video.play();
+        console.log("Camera started successfully");
     })
     .catch(error => {
         console.error("Error accessing the camera:", error);
@@ -35,6 +36,7 @@ function flipCamera() {
     }
     // Toggle the facing mode
     currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+    console.log(`Switching to ${currentFacingMode} camera`);
     startCamera(); // Restart the camera with the new mode
 }
 
@@ -52,9 +54,10 @@ function captureImage() {
     // Draw the current video frame to the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert the canvas image to a data URL and process it
+    // Convert the canvas image to a data URL
     const capturedImage = canvas.toDataURL("image/png");
-    processImage(capturedImage);
+    console.log("Image captured:", capturedImage);
+    processImage(capturedImage); // Process the captured image
 }
 
 // Initialize the camera on page load
@@ -65,3 +68,4 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("captureButton").addEventListener("click", captureImage);
     document.getElementById("flipButton").addEventListener("click", flipCamera);
 });
+
