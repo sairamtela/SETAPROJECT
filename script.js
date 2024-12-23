@@ -1,104 +1,161 @@
+// Keywords for data extraction
 const keywords = [
     "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
     "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Horse power", "Consignee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
     "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
     "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
     "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame",  "Other Specifications"
+    "Pipesize", "Manufacturer", "Office", "SR number", "RPM"
 ];
 
-let extractedData = {};
 let currentFacingMode = "environment";
+let stream = null;
+let extractedData = {};
+let allData = [];
 
-// Start the camera
+// Elements
+const video = document.getElementById('camera');
+const canvas = document.getElementById('canvas');
+const outputDiv = document.getElementById('outputAttributes');
+
+// Start Camera
 async function startCamera() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode }
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
         });
-        document.getElementById("camera").srcObject = stream;
-    } catch (error) {
-        alert("Error accessing the camera. Please allow camera access.");
-        console.error("Camera error:", error);
+        video.srcObject = stream;
+        video.play();
+    } catch (err) {
+        alert("Camera access denied or unavailable.");
+        console.error(err);
     }
 }
 
-// Flip the camera between front and back
-document.getElementById("flipButton").addEventListener("click", () => {
+// Flip Camera
+document.getElementById('flipButton').addEventListener('click', () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera();
 });
 
-// Capture an image and process it
-document.getElementById("captureButton").addEventListener("click", async () => {
-    const video = document.getElementById("camera");
-    const canvas = document.getElementById("canvas");
-    const context = canvas.getContext("2d");
+// Capture Image
+document.getElementById('captureButton').addEventListener('click', () => {
+    const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const img = new Image();
-    img.src = canvas.toDataURL();
-    img.onload = () => processImage(img);
+    canvas.toBlob(blob => {
+        const img = new Image();
+        img.src = URL.createObjectURL(blob);
+        img.onload = () => processImage(img);
+    }, 'image/png');
 });
 
-// Use Tesseract.js to process the captured image and extract text
+// Process Image with Tesseract.js
 async function processImage(img) {
+    outputDiv.innerHTML = "<p>Processing...</p>";
     try {
-        document.getElementById("loader").style.display = "block";
-        const result = await Tesseract.recognize(img, "eng");
-        mapExtractedData(result.data.text);
+        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+        if (result && result.data.text) {
+            console.log("OCR Result:", result.data.text);
+            processTextToAttributes(result.data.text);
+        } else {
+            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+        }
     } catch (error) {
-        alert("Error processing the image. Please try again.");
-        console.error("Image processing error:", error);
-    } finally {
-        document.getElementById("loader").style.display = "none";
+        console.error("Tesseract.js Error:", error);
+        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
     }
 }
 
-// Map extracted text to predefined keywords
-function mapExtractedData(text) {
+// Map Extracted Text to Keywords and Capture Remaining Text
+function processTextToAttributes(text) {
     const lines = text.split("\n");
     extractedData = {};
     let remainingText = [];
 
-    // Match lines to keywords
     keywords.forEach(keyword => {
-        lines.forEach((line, index) => {
-            const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.+)`, "i");
-            const match = line.match(regex);
-            if (match && match[1]) {
-                extractedData[keyword] = match[1].trim();
-                lines[index] = ""; // Mark line as processed
+        for (let line of lines) {
+            if (line.includes(keyword)) {
+                const value = line.split(":"[1]?.trim() || "-");
+                if (value !== "-") {
+                    extractedData[keyword] = value;
+                }
+                break;
             }
-        });
+        }
     });
 
-    // Remaining unmatched text goes into Other Specifications
-    remainingText = lines.filter(line => line.trim() !== "");
+    // Capture remaining text that is not matched with keywords
+    lines.forEach(line => {
+        if (!Object.values(extractedData).some(value => line.includes(value))) {
+            remainingText.push(line.trim());
+        }
+    });
+
+    // Add remaining text as "Other Specifications"
     extractedData["Other Specifications"] = remainingText.join(" ");
 
-    // Display the extracted data
-    displayExtractedData();
+    allData.push(extractedData);
+    displayData();
 }
 
-// Display extracted data on the frontend
-function displayExtractedData() {
-    const outputDiv = document.getElementById("outputAttributes");
-    outputDiv.innerHTML = ""; // Clear previous data
+// Display Extracted Data
+function displayData() {
+    outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
-    console.log("Extracted Data:", extractedData); // Log the extracted data
 }
 
-// Start Camera on Page Load
+// Export to Salesforce
+document.getElementById('exportButton').addEventListener('click', async () => {
+    if (Object.keys(extractedData).length === 0) {
+        alert("No extracted data available to export. Please process an image first.");
+        return;
+    }
+
+    // Ensure all fields are sanitized as strings
+    const sanitizedData = {};
+    for (const [key, value] of Object.entries(extractedData)) {
+        if (Array.isArray(value)) {
+            sanitizedData[key] = value.join(", "); // Convert array to comma-separated string
+        } else if (value !== undefined && value !== null) {
+            sanitizedData[key] = value.toString(); // Convert other values to strings
+        } else {
+            sanitizedData[key] = ""; // Handle null or undefined as empty string
+        }
+    }
+
+    try {
+        console.log("Exporting Data to Salesforce:", sanitizedData);
+        const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sanitizedData), // Send sanitizedData directly
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
+        } else {
+            alert(`Error creating record in Salesforce: ${result.error}`);
+        }
+    } catch (error) {
+        console.error("Error exporting data to Salesforce:", error);
+        alert("Error exporting data to Salesforce. Check console for details.");
+    }
+});
+
+// Start Camera on Load
 startCamera();
