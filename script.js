@@ -22,29 +22,6 @@ const keywords = [
     "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM"
 ];
 
-// Function to calculate similarity (Levenshtein distance)
-function getSimilarity(a, b) {
-    if (!a || !b) return 0;
-    a = a.toLowerCase();
-    b = b.toLowerCase();
-    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-
-    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            matrix[i][j] = Math.min(
-                matrix[i - 1][j] + 1,
-                matrix[i][j - 1] + 1,
-                matrix[i - 1][j - 1] + cost
-            );
-        }
-    }
-    return 1 - matrix[a.length][b.length] / Math.max(a.length, b.length);
-}
-
 // Start Camera
 async function startCamera() {
     try {
@@ -108,70 +85,43 @@ async function processImage(img) {
     }
 }
 
-// Process Image with Tesseract.js
-async function processImage(img) {
-    outputDiv.innerHTML = "<p>Processing...</p>";
-    try {
-        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
-        if (result && result.data.text) {
-            console.log("OCR Result:", result.data.text);
-            processTextToAttributes(result.data.text);
-        } else {
-            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
-        }
-    } catch (error) {
-        console.error("Tesseract.js Error:", error);
-        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
-    }
-}
-
-// Map Extracted Text to Keywords
-function processTextToAttributes(text) {
+// Map OCR Output to Structured Data Using Keywords
+function mapStructuredData(text) {
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    extractedData = {};
+    extractedData = {}; // Reset for new data
+    otherSpecifications = []; // Reset unmatched fields
 
-    if (lines.length > 0) {
-        // Set the first line as "Product Name"
-        extractedData["Product Name"] = lines[0];
-    }
-
-    const matchedAttributes = new Set();
-    const otherSpecifications = [];
-
-    // Process lines for attributes
-    lines.slice(1).forEach(line => {
+    lines.forEach(line => {
         let matched = false;
-        for (let keyword of keywords) {
-            if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                const value = line.split(/[:\-]/)[1]?.trim() || "-";
-                if (value !== "-") {
+
+        keywords.forEach(keyword => {
+            const regex = new RegExp(`^${keyword}\\s*[:\\-]?`, "i"); // Match keyword with optional separators
+            if (regex.test(line)) {
+                const value = line.replace(regex, "").trim(); // Remove the keyword and separator
+                if (value) {
                     extractedData[keyword] = value;
-                    matchedAttributes.add(keyword);
                     matched = true;
                 }
-                break;
             }
-        }
+        });
+
         if (!matched) {
+            // If no keyword matches, add the line to Other Specifications
             otherSpecifications.push(line);
         }
     });
 
-    // Ensure all keywords are present with a value if available
+    // Add placeholders for missing keywords
     keywords.forEach(keyword => {
-        if (!matchedAttributes.has(keyword)) {
+        if (!extractedData[keyword]) {
             extractedData[keyword] = "-";
         }
     });
 
-    // Add unclassified text to "Other Specifications"
+    // Add Other Specifications if there are unmatched lines
     if (otherSpecifications.length > 0) {
         extractedData["Other Specifications"] = otherSpecifications.join(", ");
     }
-
-    allData.push(extractedData);
-    displayData();
-}
 
     displayData();
 }
