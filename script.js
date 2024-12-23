@@ -5,35 +5,52 @@ const outputDiv = document.getElementById('outputAttributes');
 
 let currentFacingMode = "environment";
 let stream = null;
-let extractedData = {}; // This variable will store the final extracted data
+let extractedData = {}; // Store extracted data
 
-// Keywords for filtering specific data
+// Define keywords for matching specific data fields
 const keywords = [
-    "Engine Type", "Motor Phase", "Voltage", "Frequency", "Material",
-    "Motor Speed", "Cooling Method", "Model"
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "frame"
 ];
 
 // Start Camera
 async function startCamera() {
     try {
+        // Stop existing stream if any
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
         }
+
+        // Start new stream
         stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: currentFacingMode }
         });
         video.srcObject = stream;
         video.play();
     } catch (err) {
-        console.error("Error accessing camera:", err);
-        alert("Unable to access the camera. Please check your browser settings.");
+        console.error("Error starting camera:", err);
+        alert("Unable to access the camera. Please check your device or browser permissions.");
     }
 }
 
 // Flip Camera
 document.getElementById('flipButton').addEventListener('click', () => {
-    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera();
+    try {
+        currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+        startCamera(); // Restart camera with new facing mode
+    } catch (err) {
+        console.error("Error flipping camera:", err);
+        alert("Camera flip failed. Ensure your device supports front and back cameras.");
+    }
 });
 
 // Capture Image
@@ -56,10 +73,11 @@ async function processImage(img) {
     try {
         const result = await Tesseract.recognize(img, 'eng', {
             logger: m => console.log(m),
+            tessedit_char_whitelist: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/"
         });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            processText(result.data.text);
+            mapStructuredData(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
@@ -69,14 +87,14 @@ async function processImage(img) {
     }
 }
 
-// Process OCR Text and Match Keywords
-function processText(text) {
+// Map OCR Output to Structured Data Using Keywords
+function mapStructuredData(text) {
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    extractedData = {}; // Reset the variable for new data
+    extractedData = {}; // Reset for new data
 
     lines.forEach(line => {
         keywords.forEach(keyword => {
-            if (line.includes(keyword)) {
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
                 const [key, value] = line.split(":");
                 if (key && value) {
                     extractedData[key.trim()] = value.trim();
@@ -97,21 +115,9 @@ function displayData() {
         Object.entries(extractedData).forEach(([key, value]) => {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         });
-        console.log("Extracted Data Stored:", extractedData); // Log the variable for backend usage
+        console.log("Structured Extracted Data:", extractedData); // Log data for backend usage
     }
 }
-
-// Example Backend Call (Uncomment to use)
-// function sendToBackend() {
-//     fetch("http://127.0.0.1:5000/api/push", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify(extractedData) // Send the data to backend
-//     })
-//         .then(response => response.json())
-//         .then(data => console.log("Backend Response:", data))
-//         .catch(error => console.error("Error sending data to backend:", error));
-// }
 
 // Start Camera on Page Load
 startCamera();
