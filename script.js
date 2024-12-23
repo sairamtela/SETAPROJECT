@@ -8,7 +8,7 @@ let stream = null;
 let extractedData = {}; // Store matched structured data
 let otherSpecifications = []; // Store unmatched fields
 
-// Define constant keywords for matching fields
+// Define constant keywords for mapping fields
 const keywords = [
     "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
     "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
@@ -21,6 +21,29 @@ const keywords = [
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
     "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM"
 ];
+
+// Function to calculate similarity (Levenshtein distance)
+function getSimilarity(a, b) {
+    if (!a || !b) return 0;
+    a = a.toLowerCase();
+    b = b.toLowerCase();
+    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    return 1 - matrix[a.length][b.length] / Math.max(a.length, b.length);
+}
 
 // Start Camera
 async function startCamera() {
@@ -95,9 +118,9 @@ function mapStructuredData(text) {
         let matched = false;
 
         keywords.forEach(keyword => {
-            const regex = new RegExp(`^${keyword}\\s*[:\\-]?`, "i"); // Match keyword with optional separators
-            if (regex.test(line)) {
-                const value = line.replace(regex, "").trim(); // Remove the keyword and separator
+            const similarity = getSimilarity(line.split(/[:\-]/)[0], keyword); // Compare field name
+            if (similarity > 0.7) { // If similarity is above 70%, consider it a match
+                const value = line.replace(/[:\-]/, "").split(keyword)[1]?.trim() || "";
                 if (value) {
                     extractedData[keyword] = value;
                     matched = true;
