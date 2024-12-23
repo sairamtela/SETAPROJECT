@@ -38,12 +38,19 @@ button:hover {
     background-color: #004d40;
 }
 
-h3 {
-    text-decoration: underline;
-    margin-top: 20px;
-}
-
 #outputAttributes {
     text-align: left;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+#loader {
+    font-size: 18px;
+    color: #00796b;
     margin-top: 20px;
 }
