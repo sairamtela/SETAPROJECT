@@ -1,6 +1,15 @@
 const keywords = [
-    "Product name", "Power", "Power Source", "Engine Type", "Motor Phase", "Voltage",
-    "Frequency", "Material", "Motor Speed", "Other Specifications"
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM", 
+    "frame", "Other Specifications"
 ];
 
 let extractedData = {};
@@ -19,49 +28,31 @@ async function startCamera() {
     }
 }
 
-// Flip the camera
+// Flip the camera between front and back
 document.getElementById("flipButton").addEventListener("click", () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera();
 });
 
-// Capture and preprocess the image
+// Capture an image and process it
 document.getElementById("captureButton").addEventListener("click", async () => {
     const video = document.getElementById("camera");
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
-
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Preprocess the image (increase contrast and brightness)
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-        data[i] = data[i] * 1.2; // Red channel
-        data[i + 1] = data[i + 1] * 1.2; // Green channel
-        data[i + 2] = data[i + 2] * 1.2; // Blue channel
-    }
-    context.putImageData(imageData, 0, 0);
-
-    const imgDataURL = canvas.toDataURL("image/png");
-    console.log("Processed Image Data URI:", imgDataURL); // Debugging
-
-    processImageFromCanvas(imgDataURL);
+    const img = new Image();
+    img.src = canvas.toDataURL();
+    img.onload = () => processImage(img);
 });
 
-// Use Tesseract.js to process the preprocessed image
-async function processImageFromCanvas(imageDataURL) {
+// Use Tesseract.js to process the captured image and extract text
+async function processImage(img) {
     try {
         document.getElementById("loader").style.display = "block";
-
-        const result = await Tesseract.recognize(imageDataURL, "eng", {
-            logger: m => console.log(m) // Log OCR progress
-        });
-
-        console.log("Raw OCR Output:", result.data.text); // Debugging OCR output
+        const result = await Tesseract.recognize(img, "eng");
         mapExtractedData(result.data.text);
     } catch (error) {
         alert("Error processing the image. Please try again.");
@@ -73,13 +64,14 @@ async function processImageFromCanvas(imageDataURL) {
 
 // Map extracted text to predefined keywords
 function mapExtractedData(text) {
-    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
+    const lines = text.split("\n");
     extractedData = {};
+    let remainingText = [];
 
     // Match lines to keywords
     keywords.forEach(keyword => {
         lines.forEach((line, index) => {
-            const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.+)`, "i");
+            const regex = new RegExp(${keyword}\\s*[:\\-]?\\s*(.+), "i");
             const match = line.match(regex);
             if (match && match[1]) {
                 extractedData[keyword] = match[1].trim();
@@ -88,35 +80,29 @@ function mapExtractedData(text) {
         });
     });
 
-    // Add unmatched lines to Other Specifications
-    const remainingText = lines.filter(line => line.trim() !== "");
+    // Remaining unmatched text goes into Other Specifications
+    remainingText = lines.filter(line => line.trim() !== "");
     if (remainingText.length > 0) {
         extractedData["Other Specifications"] = remainingText.join(" ");
     }
 
+    // Display the extracted data
     displayExtractedData();
 }
 
-// Display the extracted data
+// Display only attributes with values
 function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
     outputDiv.innerHTML = ""; // Clear previous data
 
-    if (Object.keys(extractedData).length === 0) {
-        outputDiv.innerHTML = "<p>No data yet...</p>";
-        return;
-    }
-
     Object.entries(extractedData).forEach(([key, value]) => {
-        if (value && value !== "-") {
-            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+        if (value && value !== "-") { // Only display attributes with valid values
+            outputDiv.innerHTML += <p><strong>${key}:</strong> ${value}</p>;
         }
     });
 
-    console.log("Extracted Data:", extractedData); // Debugging
+    console.log("Extracted Data:", extractedData); // Log the extracted data
 }
 
 // Start Camera on Page Load
-document.addEventListener("DOMContentLoaded", () => {
-    startCamera();
-});
+startCamera();
