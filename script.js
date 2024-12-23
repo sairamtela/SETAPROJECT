@@ -1,15 +1,6 @@
 const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM", 
-    "frame", "Other Specifications"
+    "Product name", "Power", "Power Source", "Engine Type", "Motor Phase", "Voltage",
+    "Frequency", "Material", "Motor Speed", "Other Specifications"
 ];
 
 let extractedData = {};
@@ -28,34 +19,43 @@ async function startCamera() {
     }
 }
 
-// Flip the camera between front and back
+// Flip the camera
 document.getElementById("flipButton").addEventListener("click", () => {
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera();
 });
 
-// Capture an image and process it using Canvas
+// Capture and preprocess the image
 document.getElementById("captureButton").addEventListener("click", async () => {
     const video = document.getElementById("camera");
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Pass canvas image to Tesseract.js
-    const imgDataURL = canvas.toDataURL();
-    console.log("Captured Image Data URI:", imgDataURL); // Debugging captured image
-    processImageFromCanvas(canvas);
+    // Preprocess the image (increase contrast and brightness)
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        data[i] = data[i] * 1.2; // Red channel
+        data[i + 1] = data[i + 1] * 1.2; // Green channel
+        data[i + 2] = data[i + 2] * 1.2; // Blue channel
+    }
+    context.putImageData(imageData, 0, 0);
+
+    const imgDataURL = canvas.toDataURL("image/png");
+    console.log("Processed Image Data URI:", imgDataURL); // Debugging
+
+    processImageFromCanvas(imgDataURL);
 });
 
-// Use Tesseract.js to process the canvas image
-async function processImageFromCanvas(canvas) {
+// Use Tesseract.js to process the preprocessed image
+async function processImageFromCanvas(imageDataURL) {
     try {
         document.getElementById("loader").style.display = "block";
-
-        // Extract image data from canvas
-        const imageDataURL = canvas.toDataURL("image/png");
 
         const result = await Tesseract.recognize(imageDataURL, "eng", {
             logger: m => console.log(m) // Log OCR progress
@@ -94,11 +94,10 @@ function mapExtractedData(text) {
         extractedData["Other Specifications"] = remainingText.join(" ");
     }
 
-    // Display the extracted data
     displayExtractedData();
 }
 
-// Display only attributes with values
+// Display the extracted data
 function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
     outputDiv.innerHTML = ""; // Clear previous data
@@ -109,15 +108,15 @@ function displayExtractedData() {
     }
 
     Object.entries(extractedData).forEach(([key, value]) => {
-        if (value && value !== "-") { // Only display attributes with valid values
+        if (value && value !== "-") {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
 
-    console.log("Extracted Data for Output:", extractedData); // Log the data for debugging
+    console.log("Extracted Data:", extractedData); // Debugging
 }
 
 // Start Camera on Page Load
 document.addEventListener("DOMContentLoaded", () => {
-    startCamera(); // Automatically start the camera when the page loads
+    startCamera();
 });
