@@ -25,19 +25,27 @@ const outputDiv = document.getElementById('outputAttributes');
 // Start Camera
 async function startCamera() {
     try {
-        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+
         const constraints = {
             video: { facingMode: currentFacingMode, width: 1280, height: 720 }
         };
 
-        // Fallback if facingMode is unsupported
-        stream = await navigator.mediaDevices.getUserMedia(constraints).catch(() => {
+        console.log("Requested constraints:", constraints);
+
+        // Attempt to get user media with facingMode
+        stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
+            console.warn("Facing mode unsupported. Trying default video device.", err);
             return navigator.mediaDevices.getUserMedia({ video: true });
         });
 
+        console.log("Camera started successfully.");
         video.srcObject = stream;
         video.play();
     } catch (err) {
+        console.error("Failed to start camera:", err);
         handleCameraError(err);
     }
 }
@@ -45,15 +53,15 @@ async function startCamera() {
 // Handle Camera Errors
 function handleCameraError(err) {
     if (err.name === "NotAllowedError") {
-        alert("Camera access denied. Please allow camera access and try again.");
+        alert("Camera access denied. Please allow camera access in your browser settings.");
     } else if (err.name === "NotFoundError") {
-        alert("No camera device found. Please connect a camera and try again.");
+        alert("No camera device found. Connect a camera and try again.");
     } else if (err.name === "OverconstrainedError") {
-        alert("Camera constraints could not be satisfied. Please check your device settings.");
+        alert("The requested camera constraints could not be satisfied. Check your device settings.");
     } else {
         alert("An unknown error occurred while accessing the camera.");
     }
-    console.error("Camera Error:", err);
+    console.error("Camera error:", err);
 }
 
 // Flip Camera
