@@ -64,6 +64,10 @@ def create_product_record_in_salesforce(data):
     try:
         result = sf.SETA_product_details__c.create(record)
         logging.info(f"Salesforce record creation response: {result}")
+        if 'id' in result:
+            logging.info(f"Record created successfully with ID: {result['id']}")
+        else:
+            logging.warning("No ID returned. Response may indicate an error.")
         return result
     except Exception as e:
         logging.error(f"Failed to create Salesforce record: {e}")
@@ -148,12 +152,14 @@ def export_data():
                     'salesforce_response': sf_result
                 }), 500
         except Exception as e:
+            logging.error(f"Salesforce Error: {e}")
             return jsonify({'error': f"Salesforce Error: {e}"}), 500
 
         # Step 2: Save data to Excel
         try:
             file_path = save_to_excel(data)
         except Exception as e:
+            logging.error(f"Excel Error: {e}")
             return jsonify({'error': f"Excel Error: {e}"}), 500
 
         # Return success response
