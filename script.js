@@ -1,26 +1,26 @@
-// Keywords for data extraction
-const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consignee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "SR number", "RPM"
-];
+// Elements
+const video = document.getElementById('camera');
+const canvas = document.getElementById('canvas');
+const outputDiv = document.getElementById('outputAttributes');
 
 let currentFacingMode = "environment";
 let stream = null;
 let extractedData = {};
 let allData = [];
 
-// Elements
-const video = document.getElementById('camera');
-const canvas = document.getElementById('canvas');
-const outputDiv = document.getElementById('outputAttributes');
+const keywords = [
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "frame", 
+];
 
 // Start Camera
 async function startCamera() {
@@ -74,16 +74,22 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords and Capture Remaining Text
+// Map Extracted Text to Keywords
 function processTextToAttributes(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     extractedData = {};
-    let remainingText = [];
+
+    if (lines.length > 0) {
+        // Set the first line as "Product Name"
+        extractedData["Product Name"] = lines[0];
+    }
+
+    const otherSpecifications = [];
 
     keywords.forEach(keyword => {
-        for (let line of lines) {
+        for (let line of lines.slice(1)) { // Exclude the first line
             if (line.includes(keyword)) {
-                const value = line.split(":"[1]?.trim() || "-");
+                const value = line.split(":")[1]?.trim() || "-";
                 if (value !== "-") {
                     extractedData[keyword] = value;
                 }
@@ -92,21 +98,23 @@ function processTextToAttributes(text) {
         }
     });
 
-    // Capture remaining text that is not matched with keywords
-    lines.forEach(line => {
-        if (!Object.values(extractedData).some(value => line.includes(value))) {
-            remainingText.push(line.trim());
+    // Add unclassified text to "Other Specifications"
+    lines.slice(1).forEach(line => {
+        const isClassified = keywords.some(keyword => line.includes(keyword));
+        if (!isClassified) {
+            otherSpecifications.push(line);
         }
     });
 
-    // Add remaining text as "Other Specifications"
-    extractedData["Other Specifications"] = remainingText.join(" ");
+    if (otherSpecifications.length > 0) {
+        extractedData["Other Specifications"] = otherSpecifications.join(", ");
+    }
 
     allData.push(extractedData);
     displayData();
 }
 
-// Display Extracted Data
+// Display Data
 function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
@@ -116,48 +124,15 @@ function displayData() {
     });
 }
 
-// Export to Salesforce
-document.getElementById('exportButton').addEventListener('click', async () => {
-    if (Object.keys(extractedData).length === 0) {
-        alert("No extracted data available to export. Please process an image first.");
-        return;
-    }
+// Export to Excel
+document.getElementById('exportButton').addEventListener('click', () => {
+    const workbook = XLSX.utils.book_new();
+    const headers = ["Product Name", ...keywords, "Other Specifications"];
+    const data = allData.map(row => headers.map(key => row[key] || "-"));
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
-    // Sanitize and prepare the data for export
-    const sanitizedData = {};
-    for (const [key, value] of Object.entries(extractedData)) {
-        if (Array.isArray(value)) {
-            sanitizedData[key] = value.join(", "); // Convert array to a string
-        } else if (value !== undefined && value !== null) {
-            sanitizedData[key] = value.toString(); // Ensure string format
-        } else {
-            sanitizedData[key] = ""; // Handle null or undefined values
-        }
-    }
-
-    // Debug: Log sanitized data to verify structure
-    console.log("Sanitized Data to be sent:", sanitizedData);
-
-    try {
-        const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ data: sanitizedData }), // Nest data under a `data` key
-        });
-
-        const result = await response.json();
-        if (response.ok) {
-            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
-        } else {
-            console.error("Salesforce Error Response:", result);
-            alert(`Error creating record in Salesforce: ${result.error}`);
-        }
-    } catch (error) {
-        console.error("Error exporting data to Salesforce:", error);
-        alert("Error exporting data to Salesforce. Check console for details.");
-    }
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
+    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
 });
 
 // Start Camera on Load
