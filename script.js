@@ -1,58 +1,37 @@
-const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame",  "Other Specifications"
-];
+const BACKEND_ENDPOINT = "http://127.0.0.1:5000/api/push"; // Backend API URL
 
-let extractedData = {};
-let currentFacingMode = "environment";
+let extractedData = {}; // Store extracted data globally
 
-// Start the camera
-async function startCamera() {
+// Send extracted data to the backend
+async function sendDataToBackend() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode }
+        console.log("Sending Data to Backend:", extractedData); // Log for debugging
+
+        const response = await fetch(BACKEND_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(extractedData) // Send data as JSON
         });
-        document.getElementById("camera").srcObject = stream;
+
+        const result = await response.json();
+        if (response.ok) {
+            alert("Data successfully stored in Salesforce and Excel sheet!");
+        } else {
+            alert(`Backend error: ${result.error}`);
+        }
     } catch (error) {
-        alert("Error accessing the camera. Please allow camera access.");
-        console.error("Camera error:", error);
+        alert("Failed to connect to the backend. Please try again.");
+        console.error("Backend connection error:", error);
     }
 }
-
-// Flip the camera between front and back
-document.getElementById("flipButton").addEventListener("click", () => {
-    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-    startCamera();
-});
-
-// Capture an image and process it
-document.getElementById("captureButton").addEventListener("click", async () => {
-    const video = document.getElementById("camera");
-    const canvas = document.getElementById("canvas");
-    const context = canvas.getContext("2d");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const img = new Image();
-    img.src = canvas.toDataURL();
-    img.onload = () => processImage(img);
-});
 
 // Use Tesseract.js to process the captured image and extract text
 async function processImage(img) {
     try {
         document.getElementById("loader").style.display = "block";
         const result = await Tesseract.recognize(img, "eng");
+
+        // Process the extracted text into structured data
         mapExtractedData(result.data.text);
     } catch (error) {
         alert("Error processing the image. Please try again.");
@@ -62,8 +41,15 @@ async function processImage(img) {
     }
 }
 
-// Map extracted text to predefined keywords
+// Map extracted text to predefined keywords and store in variable
 function mapExtractedData(text) {
+    const keywords = [
+        "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+        "Motor Frame", "Model", "Quantity", "Voltage", "Material", "Horse power",
+        "Stage", "GSTIN", "Seller Address", "Manufacture date", "Company name",
+        "Customer care number", "Total amount", "Other Specifications"
+    ];
+
     const lines = text.split("\n");
     extractedData = {};
     let remainingText = [];
@@ -84,11 +70,11 @@ function mapExtractedData(text) {
     remainingText = lines.filter(line => line.trim() !== "");
     extractedData["Other Specifications"] = remainingText.join(" ");
 
-    // Display the extracted data
+    // Display extracted data for confirmation
     displayExtractedData();
 }
 
-// Display extracted data on the frontend
+// Display extracted data on the frontend for review
 function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
     outputDiv.innerHTML = ""; // Clear previous data
@@ -97,8 +83,7 @@ function displayExtractedData() {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
-    console.log("Extracted Data:", extractedData); // Log the extracted data
 }
 
-// Start Camera on Page Load
-startCamera();
+// Initialize the camera and process the captured image
+document.addEventListener("DOMContentLoaded", startCamera);
