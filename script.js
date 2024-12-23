@@ -12,7 +12,7 @@ const keywords = [
     "frame", "Other Specifications"
 ];
 
-let extractedData = {}; // Store extracted data here
+let extractedData = {};
 let currentFacingMode = "environment";
 
 // Start the camera
@@ -34,7 +34,7 @@ document.getElementById("flipButton").addEventListener("click", () => {
     startCamera();
 });
 
-// Capture an image and process it
+// Capture an image and process it using Canvas
 document.getElementById("captureButton").addEventListener("click", async () => {
     const video = document.getElementById("camera");
     const canvas = document.getElementById("canvas");
@@ -43,17 +43,21 @@ document.getElementById("captureButton").addEventListener("click", async () => {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const img = new Image();
-    img.src = canvas.toDataURL();
-    console.log("Captured Image Data URI:", img.src); // Debugging the captured image
-    img.onload = () => processImage(img);
+    // Pass canvas image to Tesseract.js
+    const imgDataURL = canvas.toDataURL();
+    console.log("Captured Image Data URI:", imgDataURL); // Debugging captured image
+    processImageFromCanvas(canvas);
 });
 
-// Use Tesseract.js to process the captured image and extract text
-async function processImage(img) {
+// Use Tesseract.js to process the canvas image
+async function processImageFromCanvas(canvas) {
     try {
         document.getElementById("loader").style.display = "block";
-        const result = await Tesseract.recognize(img, "eng", {
+
+        // Extract image data from canvas
+        const imageDataURL = canvas.toDataURL("image/png");
+
+        const result = await Tesseract.recognize(imageDataURL, "eng", {
             logger: m => console.log(m) // Log OCR progress
         });
 
@@ -90,17 +94,8 @@ function mapExtractedData(text) {
         extractedData["Other Specifications"] = remainingText.join(" ");
     }
 
-    // Store extracted data for further use
-    storeExtractedData(extractedData);
-
     // Display the extracted data
     displayExtractedData();
-}
-
-// Store extracted data in a variable for reuse
-function storeExtractedData(data) {
-    console.log("Stored Extracted Data:", data); // Log data for verification
-    // You can now use the `data` variable in other parts of your application
 }
 
 // Display only attributes with values
