@@ -4,26 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OCR to Salesforce</title>
-    <style>
-        #video {
-            width: 100%;
-            max-width: 400px;
-            border: 2px solid #009688;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        #canvas {
-            display: none; /* Hide the canvas element */
-        }
-        #outputAttributes {
-            border: 1px solid #009688;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        #loader {
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <h1>OCR to Salesforce</h1>
@@ -39,7 +20,7 @@
     <h2>Extracted Data</h2>
     <div id="outputAttributes">No data yet...</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+    <!-- Link the JavaScript file -->
     <script src="app.js"></script>
 </body>
 </html>
