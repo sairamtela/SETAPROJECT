@@ -142,7 +142,6 @@ function displayData() {
         }
     });
 }
-
 // Export to Salesforce
 document.getElementById('exportButton').addEventListener('click', async () => {
     if (Object.keys(extractedData).length === 0) {
