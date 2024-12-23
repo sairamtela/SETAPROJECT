@@ -5,12 +5,12 @@ let extractedData = {}; // Store extracted data globally
 // Send extracted data to the backend
 async function sendDataToBackend() {
     try {
-        console.log("Sending Data to Backend:", extractedData); // Log for debugging
+        console.log("Sending Data to Backend:", extractedData);
 
         const response = await fetch(BACKEND_ENDPOINT, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(extractedData) // Send data as JSON
+            body: JSON.stringify(extractedData)
         });
 
         const result = await response.json();
@@ -31,8 +31,7 @@ async function processImage(img) {
         document.getElementById("loader").style.display = "block";
         const result = await Tesseract.recognize(img, "eng");
 
-        // Process the extracted text into structured data
-        mapExtractedData(result.data.text);
+        mapExtractedData(result.data.text); // Map text to structured data
     } catch (error) {
         alert("Error processing the image. Please try again.");
         console.error("Image processing error:", error);
@@ -41,7 +40,7 @@ async function processImage(img) {
     }
 }
 
-// Map extracted text to predefined keywords and store in variable
+// Map extracted text to predefined keywords
 function mapExtractedData(text) {
     const keywords = [
         "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
@@ -66,18 +65,17 @@ function mapExtractedData(text) {
         });
     });
 
-    // Remaining unmatched text goes into Other Specifications
+    // Add unmatched lines to "Other Specifications"
     remainingText = lines.filter(line => line.trim() !== "");
     extractedData["Other Specifications"] = remainingText.join(" ");
 
-    // Display extracted data for confirmation
-    displayExtractedData();
+    displayExtractedData(); // Display extracted data
 }
 
-// Display extracted data on the frontend for review
+// Display extracted data for review
 function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
-    outputDiv.innerHTML = ""; // Clear previous data
+    outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
@@ -85,5 +83,7 @@ function displayExtractedData() {
     });
 }
 
-// Initialize the camera and process the captured image
-document.addEventListener("DOMContentLoaded", startCamera);
+// Initialize camera or other UI events
+document.addEventListener("DOMContentLoaded", () => {
+    // Add your camera initialization logic here
+});
