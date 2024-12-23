@@ -1,47 +1,64 @@
-const BACKEND_ENDPOINT = "http://127.0.0.1:5000/api/push"; // Backend API URL
-
-let extractedData = {}; // Store extracted data globally
+let videoStream = null; // Store the video stream globally
+let currentFacingMode = "environment"; // Default to back camera (if available)
 
 // Initialize the camera
 function startCamera() {
     const video = document.getElementById("video");
-    const captureButton = document.getElementById("captureButton");
+
+    // Get media devices and start the camera
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: currentFacingMode }, // Default to back camera
+    })
+    .then(stream => {
+        videoStream = stream; // Save the stream globally
+        video.srcObject = stream; // Set the video stream to the video element
+        video.play();
+    })
+    .catch(error => {
+        console.error("Error accessing the camera:", error);
+        alert("Camera access failed. Please check your permissions or if a camera is available.");
+    });
+}
+
+// Flip the camera (toggle between front and back cameras)
+function flipCamera() {
+    if (videoStream) {
+        // Stop all tracks of the current stream
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+    // Toggle the facing mode
+    currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+    startCamera(); // Restart the camera with the new mode
+}
+
+// Capture the image
+function captureImage() {
+    const video = document.getElementById("video");
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
 
-    // Access the user's webcam
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            video.srcObject = stream;
-        })
-        .catch(error => {
-            console.error("Error accessing the camera:", error);
-            alert("Camera access failed. Please check your permissions.");
-        });
+    // Draw the current video frame to the canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Capture the image when the button is clicked
-    captureButton.addEventListener("click", () => {
-        context.drawImage(video, 0, 0, canvas.width, canvas.height); // Draw video frame to canvas
-        const capturedImage = canvas.toDataURL("image/png"); // Get the image as a data URL
-        processImage(capturedImage); // Process the captured image
-    });
+    // Convert the canvas image to a data URL and process it
+    const capturedImage = canvas.toDataURL("image/png");
+    processImage(capturedImage);
 }
 
 // Process the image with Tesseract.js
 async function processImage(imageData) {
     try {
-        document.getElementById("loader").style.display = "block";
-        const result = await Tesseract.recognize(imageData, "eng");
+        document.getElementById("loader").style.display = "block"; // Show the loader
+        const result = await Tesseract.recognize(imageData, "eng"); // OCR process
 
         // Map extracted text into structured data
         extractedData = mapExtractedData(result.data.text);
-
         console.log("Extracted Data:", extractedData); // Debugging purpose
     } catch (error) {
         alert("Error processing the image. Please try again.");
         console.error("Image processing error:", error);
     } finally {
-        document.getElementById("loader").style.display = "none";
+        document.getElementById("loader").style.display = "none"; // Hide the loader
     }
 }
 
@@ -91,28 +108,11 @@ function displayExtractedData(data) {
     });
 }
 
-// Send extracted data to the backend
-async function sendDataToBackend() {
-    try {
-        console.log("Sending Data to Backend:", extractedData);
-
-        const response = await fetch(BACKEND_ENDPOINT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(extractedData) // Send extracted data to backend
-        });
-
-        const result = await response.json();
-        if (response.ok) {
-            alert("Data successfully stored in Salesforce and Excel sheet!");
-        } else {
-            alert(`Backend error: ${result.error}`);
-        }
-    } catch (error) {
-        alert("Failed to connect to the backend. Please try again.");
-        console.error("Backend connection error:", error);
-    }
-}
-
 // Initialize the camera on page load
-document.addEventListener("DOMContentLoaded", startCamera);
+document.addEventListener("DOMContentLoaded", () => {
+    startCamera(); // Start the camera
+
+    // Attach button event handlers
+    document.getElementById("captureButton").addEventListener("click", captureImage);
+    document.getElementById("flipButton").addEventListener("click", flipCamera);
+});
