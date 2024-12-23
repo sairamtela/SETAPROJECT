@@ -1,76 +1,94 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from simple_salesforce import Salesforce
+import pandas as pd
+import os
 
+# Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Enable CORS for cross-origin requests
 
-# Salesforce credentials
-SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
-SF_PASSWORD = 'Sairam12345@'
-SF_SECURITY_TOKEN = 'FTvAU65IiITF4541K2Y5tDgi'
-SF_DOMAIN = 'login'
+# Connect to Salesforce
+try:
+    sf = Salesforce(
+        username="sairamtelagamsetti@sathkrutha.sandbox",
+        password="Sairam12345@",
+        security_token="ZYaDg3Smv8Iw6PiiCW1e2Wlf",
+        domain="test"
+    )
+    print("Salesforce connection established successfully.")
+except Exception as e:
+    print(f"Error connecting to Salesforce: {e}")
+    sf = None  # Mark Salesforce as unavailable
 
-def initialize_salesforce():
+@app.route('/api/push', methods=['POST'])
+def push_data():
+    """Receive data from frontend, push to Salesforce, and save to Excel."""
     try:
-        sf = Salesforce(
-            username=SF_USERNAME,
-            password=SF_PASSWORD,
-            security_token=SF_SECURITY_TOKEN,
-            domain=SF_DOMAIN
-        )
-        print("Salesforce connection established.")
-        return sf
+        data = request.json
+        print(f"Received data: {data}")
+
+        # Verify Salesforce connection
+        if not sf:
+            raise Exception("Salesforce connection not established. Check credentials.")
+
+        # Map data to Salesforce fields
+        payload = {
+            "Brand__c": data.get("Brand", ""),
+            "Colour__c": data.get("Colour", ""),
+            "Company_Name__c": data.get("Company name", ""),
+            "Customer_Care_Number__c": data.get("Customer care number", ""),
+            "Frequency__c": data.get("Frequency", ""),
+            "Gross_Weight__c": data.get("Gross weight", ""),
+            "GSTIN__c": data.get("GSTIN", ""),
+            "Head_Size__c": data.get("Head Size", ""),
+            "Height__c": data.get("Height", ""),
+            "Horse_Power__c": data.get("Horse power", ""),
+            "Manufacture_Date__c": data.get("Manufacture date", ""),
+            "Material__c": data.get("Material", ""),
+            "Model__c": data.get("Model", ""),
+            "Motor_Frame__c": data.get("Motor Frame", ""),
+            "Motor_Type__c": data.get("Motor type", ""),
+            "MRP__c": data.get("MRP", ""),
+            "Other_Specifications__c": data.get("Other Specifications", ""),
+            "Phase__c": data.get("Phase", ""),
+            "Product_Name__c": data.get("Product name", ""),
+            "Quantity__c": data.get("Quantity", ""),
+            "Ratio__c": data.get("Ratio", ""),
+            "Seller_Address__c": data.get("Seller Address", ""),
+            "Stage__c": data.get("Stage", ""),
+            "Total_Amount__c": data.get("Total amount", ""),
+            "Usage_Application__c": data.get("Usage/Application", ""),
+            "Voltage__c": data.get("Voltage", "")
+        }
+
+        # Push data to Salesforce
+        response = sf.SETA_Product_Details__c.create(payload)
+        print(f"Data pushed to Salesforce: {response}")
+
+        # Save data to Excel
+        save_to_excel(data)
+
+        return jsonify({"message": "Data successfully pushed to Salesforce and saved to Excel!"}), 200
     except Exception as e:
-        print(f"Error initializing Salesforce: {e}")
-        return None
+        print(f"Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
-sf = initialize_salesforce()
-
-def parse_extracted_data(data):
-    fields_mapping = {
-        "Brand": "Brand__c",
-        "Colour": "Colour__c",
-        "Power": "Power__c",
-        "Voltage": "Voltage__c",
-        "Phase": "Phase__c",
-        "Material": "Material__c",
-        "Frequency": "Frequency__c",
-        "Product Name": "Product_Name__c",
-        "Usage/Application": "Usage_Application__c",
-    }
-    extracted_text = data.get("Other Specifications", "")
-    lines = extracted_text.split("\n")
-    record = {}
-    for line in lines:
-        for keyword, field_name in fields_mapping.items():
-            if keyword.lower() in line.lower():
-                value_start_index = line.lower().find(keyword.lower()) + len(keyword)
-                value = line[value_start_index:].strip()
-                record[field_name] = value
-                break
-    record["Name"] = data.get("Product Name", "Default Product Name")
-    record["Other_Specifications__c"] = data.get("Other Specifications", "")
-    return record
-
-@app.route('/export_to_salesforce', methods=['POST'])
-def export_to_salesforce():
-    if not sf:
-        return jsonify({"error": "Salesforce connection failed"}), 500
-
-    data = request.json.get('extractedData', {})
-    if not data:
-        return jsonify({"error": "No extracted data received"}), 400
-
+# Save data to Excel
+def save_to_excel(data):
     try:
-        record = parse_extracted_data(data)
-        print("Mapped Salesforce Record:", record)
-        result = sf.SETA_product_details__c.create(record)
-        print(f"Record created in Salesforce with ID: {result['id']}")
-        return jsonify({"success": True, "record_id": result['id']}), 201
+        file_name = "Extracted_Data.xlsx"
+        df = pd.DataFrame([data])
+
+        if os.path.exists(file_name):
+            existing_df = pd.read_excel(file_name)
+            df = pd.concat([existing_df, df], ignore_index=True)
+
+        df.to_excel(file_name, index=False)
+        print(f"Data saved to Excel: {file_name}")
     except Exception as e:
-        print(f"Error saving data to Salesforce: {e}")
-        return jsonify({"error": f"Salesforce Error: {str(e)}"}), 500
+        print(f"Error saving to Excel: {e}")
+        raise
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="127.0.0.1", port=5000)
