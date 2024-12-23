@@ -44,10 +44,9 @@ async function processImage(img) {
     try {
         document.getElementById("loader").style.display = "block";
         const result = await Tesseract.recognize(img, "eng", {
-            logger: m => console.log(m),
-            tessedit_char_whitelist: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/ ",
-            preserve_interword_spaces: true
+            logger: m => console.log(m)
         });
+
         console.log("Raw OCR Output:", result.data.text); // Log raw text for debugging
         mapExtractedData(result.data.text);
     } catch (error) {
