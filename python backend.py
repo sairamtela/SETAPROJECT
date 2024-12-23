@@ -1,58 +1,95 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-import pandas as pd
-import os
+from openpyxl import Workbook
 from simple_salesforce import Salesforce
+from dotenv import load_dotenv
+import os
+import logging
 
 app = Flask(__name__)
-CORS(app)
 
-# Define constants
-EXCEL_FILE = "extracted_data.xlsx"
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Salesforce credentials
-SF_USERNAME = "sairamtelagamsetti@sathkrutha.sandbox"
-SF_PASSWORD = "Sairam12345@"
-SF_SECURITY_TOKEN = "ZYaDg3Smv8Iw6PiiCW1e2Wlf"
+SF_USERNAME = os.getenv('SF_USERNAME')
+SF_PASSWORD = os.getenv('SF_PASSWORD')
+SF_SECURITY_TOKEN = os.getenv('SF_SECURITY_TOKEN')
 
 # Initialize Salesforce connection
-sf = Salesforce(
-    username=SF_USERNAME,
-    password=SF_PASSWORD,
-    security_token=SF_SECURITY_TOKEN,
-    domain="test"  # Use "login" for production
-)
+try:
+    sf = Salesforce(username=SF_USERNAME, password=SF_PASSWORD, security_token=SF_SECURITY_TOKEN)
+    logging.info("Salesforce service initialized successfully.")
+except Exception as e:
+    logging.error(f"Error initializing Salesforce service: {e}")
+    sf = None
 
-# Ensure Excel file exists
-if not os.path.exists(EXCEL_FILE):
-    pd.DataFrame(columns=["Field", "Value"]).to_excel(EXCEL_FILE, index=False)
+def create_motor_record_in_salesforce(data):
+    """Creates a record in Salesforce for an electric motor."""
+    if sf is None:
+        raise Exception("Salesforce connection not initialized.")
 
-@app.route("/api/push", methods=["POST"])
-def store_data():
+    record = {
+        'Model__c': data.get('Model', 'N/A'),
+        'Voltage__c': data.get('Voltage', 'N/A'),
+        'Type_of_End_Use__c': data.get('End Use', 'N/A'),
+        'Motor_Phase__c': data.get('Motor Phase', 'N/A'),
+        'Brand__c': data.get('Brand', 'N/A'),
+        'Power__c': data.get('Power', 'N/A'),
+        'Other_Specifications__c': data.get('Specifications', 'N/A'),
+    }
+
+    return sf.ElectricMotor__c.create(record)
+
+@app.route('/export', methods=['POST'])
+def export_data():
     try:
-        # Parse incoming data
         data = request.json
-        print("Received Data:", data)
+        logging.info(f"Received data: {data}")
 
-        # Save data to Salesforce
-        salesforce_data = {key.replace(" ", "_"): value for key, value in data.items()}
-        sf_response = sf.Seta_Product_Details__c.create(salesforce_data)
+        # Salesforce integration
+        try:
+            sf_result = create_motor_record_in_salesforce(data)
+            salesforce_id = sf_result['id']
+            logging.info(f"Record created in Salesforce with ID: {salesforce_id}")
+        except Exception as e:
+            logging.error(f"Salesforce Error: {e}")
+            return jsonify({'error': f"Salesforce Error: {e}"}), 500
 
-        # Log data in Excel
-        df = pd.DataFrame(data.items(), columns=["Field", "Value"])
-        if os.path.exists(EXCEL_FILE):
-            existing_df = pd.read_excel(EXCEL_FILE)
-            df = pd.concat([existing_df, df], ignore_index=True)
-        df.to_excel(EXCEL_FILE, index=False)
+        # Excel file creation
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Motor Data"
 
-        return jsonify({
-            "message": "Data stored in Salesforce and Excel sheet.",
-            "salesforce_id": sf_response["id"]
-        })
+            # Add headers and data
+            headers = ['Model', 'Voltage', 'End Use', 'Motor Phase', 'Brand', 'Power', 'Specifications']
+            ws.append(headers)
+            ws.append([
+                data.get('Model', 'N/A'),
+                data.get('Voltage', 'N/A'),
+                data.get('End Use', 'N/A'),
+                data.get('Motor Phase', 'N/A'),
+                data.get('Brand', 'N/A'),
+                data.get('Power', 'N/A'),
+                data.get('Specifications', 'N/A'),
+            ])
+
+            # Save Excel file
+            file_path = os.path.join(os.getcwd(), 'motor_data.xlsx')
+            wb.save(file_path)
+            logging.info(f"Data saved to Excel file at {file_path}")
+        except Exception as e:
+            logging.error(f"Excel Error: {e}")
+            return jsonify({'error': f"Excel Error: {e}"}), 500
+
+        return jsonify({'salesforce_id': salesforce_id, 'message': 'Export successful.'}), 200
 
     except Exception as e:
-        print("Error:", str(e))
-        return jsonify({"error": str(e)}), 500
+        logging.error(f"Error processing export: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, port=5000)
