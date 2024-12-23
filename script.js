@@ -5,10 +5,10 @@ const outputDiv = document.getElementById('outputAttributes');
 
 let currentFacingMode = "environment";
 let stream = null;
-let extractedData = {}; // Store structured data
+let extractedData = {}; // Store matched structured data
 let otherSpecifications = []; // Store unmatched fields
 
-// Define constant keywords for mapping
+// Define constant keywords for matching fields
 const keywords = [
     "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
     "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
@@ -19,7 +19,7 @@ const keywords = [
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "RPM"
+    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM"
 ];
 
 // Start Camera
@@ -91,22 +91,22 @@ function mapStructuredData(text) {
     extractedData = {}; // Reset for new data
     otherSpecifications = []; // Reset unmatched fields
 
-    // Process each line and map to keywords
     lines.forEach(line => {
         let matched = false;
+
         keywords.forEach(keyword => {
-            const regex = new RegExp(`${keyword}`, "i"); // Case-insensitive match
+            const regex = new RegExp(`^${keyword}\\s*[:\\-]?`, "i"); // Match keyword with optional separators
             if (regex.test(line)) {
-                const [key, value] = line.split(/[:\-]/); // Split by common separators
-                if (key && value) {
-                    extractedData[key.trim()] = value.trim();
+                const value = line.replace(regex, "").trim(); // Remove the keyword and separator
+                if (value) {
+                    extractedData[keyword] = value;
                     matched = true;
                 }
             }
         });
 
         if (!matched) {
-            // If the line does not match any keyword, add it to Other Specifications
+            // If no keyword matches, add the line to Other Specifications
             otherSpecifications.push(line);
         }
     });
