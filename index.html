@@ -3,21 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OCR to Salesforce</title>
+    <title>ICR with Camera Flip & Server</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>OCR to Salesforce</h1>
+        <h1>ICR with Camera Flip & Excel Export</h1>
+
+        <!-- Video Feed and Buttons -->
         <video id="camera" autoplay playsinline></video>
         <canvas id="canvas" style="display: none;"></canvas>
+
         <div class="button-container">
+            <button id="flipButton">Flip Camera</button>
             <button id="captureButton">Capture Image</button>
+            <button id="exportButton">Export to Excel</button>
         </div>
+
+        <!-- Extracted Data -->
         <h3>Extracted Data</h3>
         <div id="outputAttributes">No data yet...</div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
