@@ -12,7 +12,7 @@ const keywords = [
     "frame", "Other Specifications"
 ];
 
-let extractedData = {};
+let extractedData = {}; // Store extracted data here
 let currentFacingMode = "environment";
 
 // Start the camera
@@ -45,6 +45,7 @@ document.getElementById("captureButton").addEventListener("click", async () => {
 
     const img = new Image();
     img.src = canvas.toDataURL();
+    console.log("Captured Image Data URI:", img.src); // Debugging the captured image
     img.onload = () => processImage(img);
 });
 
@@ -52,7 +53,11 @@ document.getElementById("captureButton").addEventListener("click", async () => {
 async function processImage(img) {
     try {
         document.getElementById("loader").style.display = "block";
-        const result = await Tesseract.recognize(img, "eng");
+        const result = await Tesseract.recognize(img, "eng", {
+            logger: m => console.log(m) // Log OCR progress
+        });
+
+        console.log("Raw OCR Output:", result.data.text); // Debugging OCR output
         mapExtractedData(result.data.text);
     } catch (error) {
         alert("Error processing the image. Please try again.");
@@ -64,9 +69,8 @@ async function processImage(img) {
 
 // Map extracted text to predefined keywords
 function mapExtractedData(text) {
-    const lines = text.split("\n");
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     extractedData = {};
-    let remainingText = [];
 
     // Match lines to keywords
     keywords.forEach(keyword => {
@@ -80,14 +84,23 @@ function mapExtractedData(text) {
         });
     });
 
-    // Remaining unmatched text goes into Other Specifications
-    remainingText = lines.filter(line => line.trim() !== "");
+    // Add unmatched lines to Other Specifications
+    const remainingText = lines.filter(line => line.trim() !== "");
     if (remainingText.length > 0) {
         extractedData["Other Specifications"] = remainingText.join(" ");
     }
 
+    // Store extracted data for further use
+    storeExtractedData(extractedData);
+
     // Display the extracted data
     displayExtractedData();
+}
+
+// Store extracted data in a variable for reuse
+function storeExtractedData(data) {
+    console.log("Stored Extracted Data:", data); // Log data for verification
+    // You can now use the `data` variable in other parts of your application
 }
 
 // Display only attributes with values
@@ -95,14 +108,21 @@ function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
     outputDiv.innerHTML = ""; // Clear previous data
 
+    if (Object.keys(extractedData).length === 0) {
+        outputDiv.innerHTML = "<p>No data yet...</p>";
+        return;
+    }
+
     Object.entries(extractedData).forEach(([key, value]) => {
         if (value && value !== "-") { // Only display attributes with valid values
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
 
-    console.log("Extracted Data:", extractedData); // Log the extracted data
+    console.log("Extracted Data for Output:", extractedData); // Log the data for debugging
 }
 
 // Start Camera on Page Load
-startCamera();
+document.addEventListener("DOMContentLoaded", () => {
+    startCamera(); // Automatically start the camera when the page loads
+});
