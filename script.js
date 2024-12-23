@@ -21,6 +21,11 @@ let allData = [];
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const outputDiv = document.getElementById('outputAttributes');
+const exportButton = document.createElement('button');
+exportButton.id = 'exportButton';
+exportButton.innerText = 'Export Data';
+exportButton.style.margin = '10px';
+document.body.appendChild(exportButton);
 
 // Start Camera
 async function startCamera() {
