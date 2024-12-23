@@ -5,7 +5,8 @@ const outputDiv = document.getElementById('outputAttributes');
 
 let currentFacingMode = "environment";
 let stream = null;
-let extractedData = {}; // Store extracted data
+let extractedData = {}; // Store structured data
+let otherSpecifications = []; // Store unmatched fields
 
 // Define keywords for matching specific data fields
 const keywords = [
@@ -18,19 +19,15 @@ const keywords = [
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame"
+    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM"
 ];
 
 // Start Camera
 async function startCamera() {
     try {
-        // Stop existing stream if any
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
         }
-
-        // Start new stream
         stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: currentFacingMode }
         });
@@ -73,7 +70,8 @@ async function processImage(img) {
     try {
         const result = await Tesseract.recognize(img, 'eng', {
             logger: m => console.log(m),
-            tessedit_char_whitelist: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/"
+            tessedit_char_whitelist: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/",
+            preserve_interword_spaces: true
         });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
@@ -91,17 +89,30 @@ async function processImage(img) {
 function mapStructuredData(text) {
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     extractedData = {}; // Reset for new data
+    otherSpecifications = []; // Reset unmatched fields
 
     lines.forEach(line => {
+        let matched = false;
         keywords.forEach(keyword => {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
-                const [key, value] = line.split(":");
+                const [key, value] = line.split(/[:\-]/); // Split by common separators
                 if (key && value) {
                     extractedData[key.trim()] = value.trim();
+                    matched = true;
                 }
             }
         });
+
+        if (!matched) {
+            // If the line does not match any keyword, add it to Other Specifications
+            otherSpecifications.push(line);
+        }
     });
+
+    // Add Other Specifications if there are unmatched lines
+    if (otherSpecifications.length > 0) {
+        extractedData["Other Specifications"] = otherSpecifications.join(", ");
+    }
 
     displayData();
 }
