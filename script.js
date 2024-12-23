@@ -21,11 +21,6 @@ let allData = [];
 const video = document.getElementById('camera');
 const canvas = document.getElementById('canvas');
 const outputDiv = document.getElementById('outputAttributes');
-const exportButton = document.createElement('button');
-exportButton.id = 'exportButton';
-exportButton.innerText = 'Export Data';
-exportButton.style.margin = '10px';
-document.body.appendChild(exportButton);
 
 // Start Camera
 async function startCamera() {
@@ -115,9 +110,8 @@ function processTextToAttributes(text) {
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.includes(keyword)) {
-                const parts = line.split(":");
-                const value = parts.length > 1 ? parts[1].trim() : "N/A";
-                if (value && value !== "N/A") {
+                const value = line.split(":"[1]?.trim() || "-");
+                if (value !== "-") {
                     extractedData[keyword] = value;
                 }
                 break;
@@ -149,40 +143,44 @@ function displayData() {
     });
 }
 
-// Export Data to Backend
+// Export to Salesforce
 document.getElementById('exportButton').addEventListener('click', async () => {
     if (Object.keys(extractedData).length === 0) {
         alert("No extracted data available to export. Please process an image first.");
         return;
     }
 
+    // Ensure all fields are sanitized as strings
     const sanitizedData = {};
     for (const [key, value] of Object.entries(extractedData)) {
-        sanitizedData[key] = value || "N/A";
+        if (Array.isArray(value)) {
+            sanitizedData[key] = value.join(", "); // Convert array to comma-separated string
+        } else if (value !== undefined && value !== null) {
+            sanitizedData[key] = value.toString(); // Convert other values to strings
+        } else {
+            sanitizedData[key] = ""; // Handle null or undefined as empty string
+        }
     }
 
-    console.log("Sending data to backend:", sanitizedData);
-
     try {
-        const response = await fetch('http://127.0.0.1:5000/export', {
+        console.log("Exporting Data to Salesforce:", sanitizedData);
+        const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(sanitizedData),
+            body: JSON.stringify(sanitizedData), // Send sanitizedData directly
         });
 
         const result = await response.json();
         if (response.ok) {
-            console.log("Backend response:", result);
-            alert(`Data exported successfully! Salesforce Record ID: ${result.salesforce_id}`);
+            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
-            console.error("Backend error response:", result);
-            alert(`Error exporting data: ${result.error}`);
+            alert(`Error creating record in Salesforce: ${result.error}`);
         }
     } catch (error) {
-        console.error("Error connecting to backend:", error);
-        alert("Failed to connect to backend. Check console for details.");
+        console.error("Error exporting data to Salesforce:", error);
+        alert("Error exporting data to Salesforce. Check console for details.");
     }
 });
 
