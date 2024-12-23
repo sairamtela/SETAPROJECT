@@ -5,6 +5,13 @@ let currentFacingMode = "environment"; // Default to back camera (if available)
 function startCamera() {
     const video = document.getElementById("video");
 
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Camera not supported in your browser.");
+        console.error("getUserMedia is not supported in this browser.");
+        return;
+    }
+
     // Get media devices and start the camera
     navigator.mediaDevices.getUserMedia({
         video: { facingMode: currentFacingMode }, // Default to back camera
@@ -16,7 +23,7 @@ function startCamera() {
     })
     .catch(error => {
         console.error("Error accessing the camera:", error);
-        alert("Camera access failed. Please check your permissions or if a camera is available.");
+        alert("Failed to access the camera. Check your device settings and permissions.");
     });
 }
 
@@ -37,75 +44,17 @@ function captureImage() {
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
 
+    if (!videoStream) {
+        alert("Camera not initialized. Please refresh the page and try again.");
+        return;
+    }
+
     // Draw the current video frame to the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert the canvas image to a data URL and process it
     const capturedImage = canvas.toDataURL("image/png");
     processImage(capturedImage);
-}
-
-// Process the image with Tesseract.js
-async function processImage(imageData) {
-    try {
-        document.getElementById("loader").style.display = "block"; // Show the loader
-        const result = await Tesseract.recognize(imageData, "eng"); // OCR process
-
-        // Map extracted text into structured data
-        extractedData = mapExtractedData(result.data.text);
-        console.log("Extracted Data:", extractedData); // Debugging purpose
-    } catch (error) {
-        alert("Error processing the image. Please try again.");
-        console.error("Image processing error:", error);
-    } finally {
-        document.getElementById("loader").style.display = "none"; // Hide the loader
-    }
-}
-
-// Map extracted text to predefined keywords
-function mapExtractedData(text) {
-    const keywords = [
-        "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-        "Motor Frame", "Model", "Quantity", "Voltage", "Material", "Horse power",
-        "Stage", "GSTIN", "Seller Address", "Manufacture date", "Company name",
-        "Customer care number", "Total amount", "Other Specifications"
-    ];
-
-    const lines = text.split("\n");
-    const mappedData = {};
-    let remainingText = [];
-
-    // Match lines to keywords
-    keywords.forEach(keyword => {
-        lines.forEach((line, index) => {
-            const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.+)`, "i");
-            const match = line.match(regex);
-            if (match && match[1]) {
-                mappedData[keyword] = match[1].trim();
-                lines[index] = ""; // Mark line as processed
-            }
-        });
-    });
-
-    // Add unmatched lines to "Other Specifications"
-    remainingText = lines.filter(line => line.trim() !== "");
-    mappedData["Other Specifications"] = remainingText.join(" ");
-
-    // Display extracted data
-    displayExtractedData(mappedData);
-
-    return mappedData;
-}
-
-// Display extracted data for review
-function displayExtractedData(data) {
-    const outputDiv = document.getElementById("outputAttributes");
-    outputDiv.innerHTML = "";
-    Object.entries(data).forEach(([key, value]) => {
-        if (value) {
-            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-        }
-    });
 }
 
 // Initialize the camera on page load
