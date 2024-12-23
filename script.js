@@ -5,22 +5,7 @@ const outputDiv = document.getElementById('outputAttributes');
 
 let currentFacingMode = "environment";
 let stream = null;
-let extractedData = {};
-let allData = [];
-
-const keywords = [
-    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
-    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
-    "Horse power", "Consinee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
-    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
-    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
-    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
-    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
-    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
-    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
-    "frame", 
-];
+let extractedData = "";
 
 // Start Camera
 async function startCamera() {
@@ -64,7 +49,8 @@ async function processImage(img) {
         const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            processTextToAttributes(result.data.text);
+            extractedData = result.data.text;
+            displayData();
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
@@ -74,66 +60,10 @@ async function processImage(img) {
     }
 }
 
-// Map Extracted Text to Keywords
-function processTextToAttributes(text) {
-    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    extractedData = {};
-
-    if (lines.length > 0) {
-        // Set the first line as "Product Name"
-        extractedData["Product Name"] = lines[0];
-    }
-
-    const otherSpecifications = [];
-
-    keywords.forEach(keyword => {
-        for (let line of lines.slice(1)) { // Exclude the first line
-            if (line.includes(keyword)) {
-                const value = line.split(":")[1]?.trim() || "-";
-                if (value !== "-") {
-                    extractedData[keyword] = value;
-                }
-                break;
-            }
-        }
-    });
-
-    // Add unclassified text to "Other Specifications"
-    lines.slice(1).forEach(line => {
-        const isClassified = keywords.some(keyword => line.includes(keyword));
-        if (!isClassified) {
-            otherSpecifications.push(line);
-        }
-    });
-
-    if (otherSpecifications.length > 0) {
-        extractedData["Other Specifications"] = otherSpecifications.join(", ");
-    }
-
-    allData.push(extractedData);
-    displayData();
-}
-
 // Display Data
 function displayData() {
-    outputDiv.innerHTML = "";
-    Object.entries(extractedData).forEach(([key, value]) => {
-        if (value) {
-            outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-        }
-    });
+    outputDiv.innerHTML = `<p><strong>Extracted Text:</strong></p><pre>${extractedData}</pre>`;
 }
-
-// Export to Excel
-document.getElementById('exportButton').addEventListener('click', () => {
-    const workbook = XLSX.utils.book_new();
-    const headers = ["Product Name", ...keywords, "Other Specifications"];
-    const data = allData.map(row => headers.map(key => row[key] || "-"));
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Extracted Data");
-    XLSX.writeFile(workbook, "Camera_Extracted_Data.xlsx");
-});
 
 // Start Camera on Load
 startCamera();
