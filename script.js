@@ -8,8 +8,8 @@ const keywords = [
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM", 
-    "frame", "Other Specifications"
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "frame",  "Other Specifications"
 ];
 
 let extractedData = {};
@@ -82,25 +82,21 @@ function mapExtractedData(text) {
 
     // Remaining unmatched text goes into Other Specifications
     remainingText = lines.filter(line => line.trim() !== "");
-    if (remainingText.length > 0) {
-        extractedData["Other Specifications"] = remainingText.join(" ");
-    }
+    extractedData["Other Specifications"] = remainingText.join(" ");
 
     // Display the extracted data
     displayExtractedData();
 }
 
-// Display only attributes with values
+// Display extracted data on the frontend
 function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
     outputDiv.innerHTML = ""; // Clear previous data
-
     Object.entries(extractedData).forEach(([key, value]) => {
-        if (value && value !== "-") { // Only display attributes with valid values
+        if (value) {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
-
     console.log("Extracted Data:", extractedData); // Log the extracted data
 }
 
