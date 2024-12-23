@@ -5,20 +5,18 @@ let currentFacingMode = "environment"; // Default to back camera (if available)
 function startCamera() {
     const video = document.getElementById("video");
 
-    // Check if getUserMedia is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert("Camera not supported in your browser.");
         console.error("getUserMedia is not supported in this browser.");
         return;
     }
 
-    // Get media devices and start the camera
     navigator.mediaDevices.getUserMedia({
-        video: { facingMode: currentFacingMode }, // Use specified camera
+        video: { facingMode: currentFacingMode },
     })
     .then(stream => {
-        videoStream = stream; // Save the stream globally
-        video.srcObject = stream; // Set the video stream to the video element
+        videoStream = stream;
+        video.srcObject = stream;
         video.play();
         console.log("Camera started successfully");
     })
@@ -28,16 +26,13 @@ function startCamera() {
     });
 }
 
-// Flip the camera (toggle between front and back cameras)
+// Flip the camera
 function flipCamera() {
     if (videoStream) {
-        // Stop all tracks of the current stream
         videoStream.getTracks().forEach(track => track.stop());
     }
-    // Toggle the facing mode
     currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
-    console.log(`Switching to ${currentFacingMode} camera`);
-    startCamera(); // Restart the camera with the new mode
+    startCamera();
 }
 
 // Capture the image
@@ -51,21 +46,15 @@ function captureImage() {
         return;
     }
 
-    // Draw the current video frame to the canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert the canvas image to a data URL
     const capturedImage = canvas.toDataURL("image/png");
     console.log("Image captured:", capturedImage);
-    processImage(capturedImage); // Process the captured image
+    processImage(capturedImage);
 }
 
 // Initialize the camera on page load
 document.addEventListener("DOMContentLoaded", () => {
-    startCamera(); // Start the camera
-
-    // Attach button event handlers
+    startCamera();
     document.getElementById("captureButton").addEventListener("click", captureImage);
     document.getElementById("flipButton").addEventListener("click", flipCamera);
 });
-
