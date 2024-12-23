@@ -108,36 +108,70 @@ async function processImage(img) {
     }
 }
 
-// Map OCR Output to Structured Data Using Keywords
-function mapStructuredData(text) {
+// Process Image with Tesseract.js
+async function processImage(img) {
+    outputDiv.innerHTML = "<p>Processing...</p>";
+    try {
+        const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
+        if (result && result.data.text) {
+            console.log("OCR Result:", result.data.text);
+            processTextToAttributes(result.data.text);
+        } else {
+            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+        }
+    } catch (error) {
+        console.error("Tesseract.js Error:", error);
+        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
+    }
+}
+
+// Map Extracted Text to Keywords
+function processTextToAttributes(text) {
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    extractedData = {}; // Reset for new data
-    otherSpecifications = []; // Reset unmatched fields
+    extractedData = {};
 
-    lines.forEach(line => {
+    if (lines.length > 0) {
+        // Set the first line as "Product Name"
+        extractedData["Product Name"] = lines[0];
+    }
+
+    const matchedAttributes = new Set();
+    const otherSpecifications = [];
+
+    // Process lines for attributes
+    lines.slice(1).forEach(line => {
         let matched = false;
-
-        keywords.forEach(keyword => {
-            const similarity = getSimilarity(line.split(/[:\-]/)[0], keyword); // Compare field name
-            if (similarity > 0.7) { // If similarity is above 70%, consider it a match
-                const value = line.replace(/[:\-]/, "").split(keyword)[1]?.trim() || "";
-                if (value) {
+        for (let keyword of keywords) {
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                const value = line.split(/[:\-]/)[1]?.trim() || "-";
+                if (value !== "-") {
                     extractedData[keyword] = value;
+                    matchedAttributes.add(keyword);
                     matched = true;
                 }
+                break;
             }
-        });
-
+        }
         if (!matched) {
-            // If no keyword matches, add the line to Other Specifications
             otherSpecifications.push(line);
         }
     });
 
-    // Add Other Specifications if there are unmatched lines
+    // Ensure all keywords are present with a value if available
+    keywords.forEach(keyword => {
+        if (!matchedAttributes.has(keyword)) {
+            extractedData[keyword] = "-";
+        }
+    });
+
+    // Add unclassified text to "Other Specifications"
     if (otherSpecifications.length > 0) {
         extractedData["Other Specifications"] = otherSpecifications.join(", ");
     }
+
+    allData.push(extractedData);
+    displayData();
+}
 
     displayData();
 }
