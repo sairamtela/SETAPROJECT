@@ -1,75 +1,47 @@
-let videoStream = null; // Store the video stream globally
-let currentFacingMode = "environment"; // Default to back camera (if available)
+const BACKEND_ENDPOINT = "http://127.0.0.1:5000/api/push"; // Backend API URL
+
 let extractedData = {}; // Store extracted data globally
 
-// Initialize the camera
-function startCamera() {
-    const video = document.getElementById("video");
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("Camera not supported in your browser.");
-        console.error("getUserMedia is not supported in this browser.");
-        return;
-    }
-
-    navigator.mediaDevices.getUserMedia({
-        video: { facingMode: currentFacingMode },
-    })
-    .then(stream => {
-        videoStream = stream; // Save the stream globally
-        video.srcObject = stream; // Set the video stream to the video element
-        video.play();
-        console.log("Camera started successfully");
-    })
-    .catch(error => {
-        console.error("Error accessing the camera:", error);
-        alert("Failed to access the camera. Check your device settings and permissions.");
-    });
-}
-
-// Flip the camera (toggle between front and back cameras)
-function flipCamera() {
-    if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop()); // Stop all tracks
-    }
-    currentFacingMode = currentFacingMode === "user" ? "environment" : "user"; // Toggle mode
-    startCamera(); // Restart the camera
-}
-
-// Capture the image
-function captureImage() {
-    const video = document.getElementById("video");
-    const canvas = document.getElementById("canvas");
-    const context = canvas.getContext("2d");
-
-    if (!videoStream) {
-        alert("Camera not initialized. Please refresh the page and try again.");
-        return;
-    }
-
-    context.drawImage(video, 0, 0, canvas.width, canvas.height); // Draw video frame to canvas
-    const capturedImage = canvas.toDataURL("image/png"); // Get the image as a data URL
-    console.log("Image captured:", capturedImage);
-    processImage(capturedImage); // Process the captured image
-}
-
-// Process the image with Tesseract.js
-async function processImage(imageData) {
+// Send extracted data to the backend
+async function sendDataToBackend() {
     try {
-        document.getElementById("loader").style.display = "block"; // Show loader
-        const result = await Tesseract.recognize(imageData, "eng"); // OCR process
+        console.log("Sending Data to Backend:", extractedData); // Log for debugging
 
-        extractedData = mapExtractedData(result.data.text); // Map text to structured data
-        console.log("Extracted Data:", extractedData); // Debugging output
+        const response = await fetch(BACKEND_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(extractedData) // Send data as JSON
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert("Data successfully stored in Salesforce and Excel sheet!");
+        } else {
+            alert(`Backend error: ${result.error}`);
+        }
+    } catch (error) {
+        alert("Failed to connect to the backend. Please try again.");
+        console.error("Backend connection error:", error);
+    }
+}
+
+// Use Tesseract.js to process the captured image and extract text
+async function processImage(img) {
+    try {
+        document.getElementById("loader").style.display = "block";
+        const result = await Tesseract.recognize(img, "eng");
+
+        // Process the extracted text into structured data
+        mapExtractedData(result.data.text);
     } catch (error) {
         alert("Error processing the image. Please try again.");
         console.error("Image processing error:", error);
     } finally {
-        document.getElementById("loader").style.display = "none"; // Hide loader
+        document.getElementById("loader").style.display = "none";
     }
 }
 
-// Map extracted text to predefined keywords
+// Map extracted text to predefined keywords and store in variable
 function mapExtractedData(text) {
     const keywords = [
         "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
@@ -79,7 +51,7 @@ function mapExtractedData(text) {
     ];
 
     const lines = text.split("\n");
-    const mappedData = {};
+    extractedData = {};
     let remainingText = [];
 
     // Match lines to keywords
@@ -88,37 +60,30 @@ function mapExtractedData(text) {
             const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.+)`, "i");
             const match = line.match(regex);
             if (match && match[1]) {
-                mappedData[keyword] = match[1].trim();
+                extractedData[keyword] = match[1].trim();
                 lines[index] = ""; // Mark line as processed
             }
         });
     });
 
-    // Add unmatched lines to "Other Specifications"
+    // Remaining unmatched text goes into Other Specifications
     remainingText = lines.filter(line => line.trim() !== "");
-    mappedData["Other Specifications"] = remainingText.join(" ");
+    extractedData["Other Specifications"] = remainingText.join(" ");
 
-    displayExtractedData(mappedData); // Display extracted data
-
-    return mappedData;
+    // Display extracted data for confirmation
+    displayExtractedData();
 }
 
-// Display extracted data for review
-function displayExtractedData(data) {
+// Display extracted data on the frontend for review
+function displayExtractedData() {
     const outputDiv = document.getElementById("outputAttributes");
-    outputDiv.innerHTML = ""; // Clear previous content
-    Object.entries(data).forEach(([key, value]) => {
+    outputDiv.innerHTML = ""; // Clear previous data
+    Object.entries(extractedData).forEach(([key, value]) => {
         if (value) {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
 }
 
-// Initialize the camera on page load
-document.addEventListener("DOMContentLoaded", () => {
-    startCamera(); // Start the camera
-
-    // Attach button event handlers
-    document.getElementById("captureButton").addEventListener("click", captureImage);
-    document.getElementById("flipButton").addEventListener("click", flipCamera);
-});
+// Initialize the camera and process the captured image
+document.addEventListener("DOMContentLoaded", startCamera);
