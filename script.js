@@ -143,44 +143,37 @@ function displayData() {
     });
 }
 
-// Export to Salesforce
+
+// Export Data to Backend
 document.getElementById('exportButton').addEventListener('click', async () => {
     if (Object.keys(extractedData).length === 0) {
         alert("No extracted data available to export. Please process an image first.");
         return;
     }
 
-    // Ensure all fields are sanitized as strings
     const sanitizedData = {};
     for (const [key, value] of Object.entries(extractedData)) {
-        if (Array.isArray(value)) {
-            sanitizedData[key] = value.join(", "); // Convert array to comma-separated string
-        } else if (value !== undefined && value !== null) {
-            sanitizedData[key] = value.toString(); // Convert other values to strings
-        } else {
-            sanitizedData[key] = ""; // Handle null or undefined as empty string
-        }
+        sanitizedData[key] = value || "N/A";
     }
 
     try {
-        console.log("Exporting Data to Salesforce:", sanitizedData);
-        const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
+        const response = await fetch('http://127.0.0.1:5000/export', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(sanitizedData), // Send sanitizedData directly
+            body: JSON.stringify(sanitizedData),
         });
 
         const result = await response.json();
         if (response.ok) {
-            alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
+            alert(`Data exported successfully! Salesforce Record ID: ${result.salesforce_id}`);
         } else {
-            alert(`Error creating record in Salesforce: ${result.error}`);
+            alert(`Error exporting data: ${result.error}`);
         }
     } catch (error) {
-        console.error("Error exporting data to Salesforce:", error);
-        alert("Error exporting data to Salesforce. Check console for details.");
+        console.error("Error connecting to backend:", error);
+        alert("Failed to connect to backend. Check console for details.");
     }
 });
 
