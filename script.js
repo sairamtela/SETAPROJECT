@@ -110,8 +110,9 @@ function processTextToAttributes(text) {
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.includes(keyword)) {
-                const value = line.split(":"[1]?.trim() || "-");
-                if (value !== "-") {
+                const parts = line.split(":");
+                const value = parts.length > 1 ? parts[1].trim() : "N/A";
+                if (value && value !== "N/A") {
                     extractedData[keyword] = value;
                 }
                 break;
@@ -143,7 +144,6 @@ function displayData() {
     });
 }
 
-
 // Export Data to Backend
 document.getElementById('exportButton').addEventListener('click', async () => {
     if (Object.keys(extractedData).length === 0) {
@@ -156,6 +156,8 @@ document.getElementById('exportButton').addEventListener('click', async () => {
         sanitizedData[key] = value || "N/A";
     }
 
+    console.log("Sending data to backend:", sanitizedData);
+
     try {
         const response = await fetch('http://127.0.0.1:5000/export', {
             method: 'POST',
@@ -167,8 +169,10 @@ document.getElementById('exportButton').addEventListener('click', async () => {
 
         const result = await response.json();
         if (response.ok) {
+            console.log("Backend response:", result);
             alert(`Data exported successfully! Salesforce Record ID: ${result.salesforce_id}`);
         } else {
+            console.error("Backend error response:", result);
             alert(`Error exporting data: ${result.error}`);
         }
     } catch (error) {
