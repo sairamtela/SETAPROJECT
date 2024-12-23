@@ -35,7 +35,8 @@ document.getElementById("captureButton").addEventListener("click", async () => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const img = new Image();
-    img.src = canvas.toDataURL();
+    img.src = canvas.toDataURL(); // Get the image as a data URI
+    console.log("Image Data URI:", img.src); // Log the image for debugging
     img.onload = () => processImage(img);
 });
 
@@ -44,7 +45,7 @@ async function processImage(img) {
     try {
         document.getElementById("loader").style.display = "block";
         const result = await Tesseract.recognize(img, "eng", {
-            logger: m => console.log(m)
+            logger: m => console.log(m) // Log progress
         });
 
         console.log("Raw OCR Output:", result.data.text); // Log raw text for debugging
