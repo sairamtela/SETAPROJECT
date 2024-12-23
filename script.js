@@ -1,14 +1,3 @@
-// Elements
-const video = document.getElementById('camera');
-const canvas = document.getElementById('canvas');
-const outputDiv = document.getElementById('outputAttributes');
-
-let currentFacingMode = "environment";
-let stream = null;
-let extractedData = {}; // Store matched structured data
-let otherSpecifications = []; // Store unmatched fields
-
-// Define constant keywords for mapping fields
 const keywords = [
     "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
     "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
@@ -19,124 +8,96 @@ const keywords = [
     "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
     "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
     "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
-    "Pipesize", "Manufacturer", "Office", "Size", "SR number", "RPM"
+    "Pipesize", "Manufacturer", "Office", "Size", "Ratio", "SR number", "volts", "weight", "RPM", 
+    "frame",  "Other Specifications"
 ];
 
-// Start Camera
+let extractedData = {};
+let currentFacingMode = "environment";
+
+// Start the camera
 async function startCamera() {
     try {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-        stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: currentFacingMode }
         });
-        video.srcObject = stream;
-        video.play();
-    } catch (err) {
-        console.error("Error starting camera:", err);
-        alert("Unable to access the camera. Please check your device or browser permissions.");
+        document.getElementById("camera").srcObject = stream;
+    } catch (error) {
+        alert("Error accessing the camera. Please allow camera access.");
+        console.error("Camera error:", error);
     }
 }
 
-// Flip Camera
-document.getElementById('flipButton').addEventListener('click', () => {
-    try {
-        currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-        startCamera(); // Restart camera with new facing mode
-    } catch (err) {
-        console.error("Error flipping camera:", err);
-        alert("Camera flip failed. Ensure your device supports front and back cameras.");
-    }
+// Flip the camera between front and back
+document.getElementById("flipButton").addEventListener("click", () => {
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+    startCamera();
 });
 
-// Capture Image
-document.getElementById('captureButton').addEventListener('click', () => {
-    const context = canvas.getContext('2d');
+// Capture an image and process it
+document.getElementById("captureButton").addEventListener("click", async () => {
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob(blob => {
-        const img = new Image();
-        img.src = URL.createObjectURL(blob);
-        img.onload = () => processImage(img);
-    }, 'image/png');
+    const img = new Image();
+    img.src = canvas.toDataURL();
+    img.onload = () => processImage(img);
 });
 
-// Process Image with Tesseract.js
+// Use Tesseract.js to process the captured image and extract text
 async function processImage(img) {
-    outputDiv.innerHTML = "<p>Processing...</p>";
     try {
-        const result = await Tesseract.recognize(img, 'eng', {
-            logger: m => console.log(m),
-            tessedit_char_whitelist: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:.-/ ",
-            preserve_interword_spaces: true
-        });
-        if (result && result.data.text) {
-            console.log("OCR Result:", result.data.text);
-            mapStructuredData(result.data.text);
-        } else {
-            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
-        }
+        document.getElementById("loader").style.display = "block";
+        const result = await Tesseract.recognize(img, "eng");
+        mapExtractedData(result.data.text);
     } catch (error) {
-        console.error("Tesseract.js Error:", error);
-        outputDiv.innerHTML = "<p>Error processing image. Please try again.</p>";
+        alert("Error processing the image. Please try again.");
+        console.error("Image processing error:", error);
+    } finally {
+        document.getElementById("loader").style.display = "none";
     }
 }
 
-// Map OCR Output to Structured Data Using Keywords
-function mapStructuredData(text) {
-    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
-    extractedData = {}; // Reset for new data
-    otherSpecifications = []; // Reset unmatched fields
+// Map extracted text to predefined keywords
+function mapExtractedData(text) {
+    const lines = text.split("\n");
+    extractedData = {};
+    let remainingText = [];
 
-    lines.forEach(line => {
-        let matched = false;
-
-        keywords.forEach(keyword => {
-            const regex = new RegExp(`^${keyword}\\s*[:\\-]?`, "i"); // Match keyword with optional separators
-            if (regex.test(line)) {
-                const value = line.replace(regex, "").trim(); // Remove the keyword and separator
-                if (value) {
-                    extractedData[keyword] = value;
-                    matched = true;
-                }
+    // Match lines to keywords
+    keywords.forEach(keyword => {
+        lines.forEach((line, index) => {
+            const regex = new RegExp(`${keyword}\\s*[:\\-]?\\s*(.+)`, "i");
+            const match = line.match(regex);
+            if (match && match[1]) {
+                extractedData[keyword] = match[1].trim();
+                lines[index] = ""; // Mark line as processed
             }
         });
-
-        if (!matched) {
-            // If no keyword matches, add the line to Other Specifications
-            otherSpecifications.push(line);
-        }
     });
 
-    // Add placeholders for missing keywords
-    keywords.forEach(keyword => {
-        if (!extractedData[keyword]) {
-            extractedData[keyword] = "-";
-        }
-    });
+    // Remaining unmatched text goes into Other Specifications
+    remainingText = lines.filter(line => line.trim() !== "");
+    extractedData["Other Specifications"] = remainingText.join(" ");
 
-    // Add Other Specifications if there are unmatched lines
-    if (otherSpecifications.length > 0) {
-        extractedData["Other Specifications"] = otherSpecifications.join(", ");
-    }
-
-    displayData();
+    // Display the extracted data
+    displayExtractedData();
 }
 
-// Display Extracted Data
-function displayData() {
-    if (Object.keys(extractedData).length === 0) {
-        outputDiv.innerHTML = "<p>No relevant data found. Please try again.</p>";
-    } else {
-        outputDiv.innerHTML = `<p><strong>Extracted Data:</strong></p>`;
-        Object.entries(extractedData).forEach(([key, value]) => {
+// Display extracted data on the frontend
+function displayExtractedData() {
+    const outputDiv = document.getElementById("outputAttributes");
+    outputDiv.innerHTML = ""; // Clear previous data
+    Object.entries(extractedData).forEach(([key, value]) => {
+        if (value) {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
-        });
-        console.log("Structured Extracted Data:", extractedData); // Log data for backend usage
-    }
+        }
+    });
+    console.log("Extracted Data:", extractedData); // Log the extracted data
 }
 
 // Start Camera on Page Load
