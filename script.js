@@ -26,15 +26,34 @@ const outputDiv = document.getElementById('outputAttributes');
 async function startCamera() {
     try {
         if (stream) stream.getTracks().forEach(track => track.stop());
-        stream = await navigator.mediaDevices.getUserMedia({
+        const constraints = {
             video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+        };
+
+        // Fallback if facingMode is unsupported
+        stream = await navigator.mediaDevices.getUserMedia(constraints).catch(() => {
+            return navigator.mediaDevices.getUserMedia({ video: true });
         });
+
         video.srcObject = stream;
         video.play();
     } catch (err) {
-        alert("Camera access denied or unavailable.");
-        console.error(err);
+        handleCameraError(err);
     }
+}
+
+// Handle Camera Errors
+function handleCameraError(err) {
+    if (err.name === "NotAllowedError") {
+        alert("Camera access denied. Please allow camera access and try again.");
+    } else if (err.name === "NotFoundError") {
+        alert("No camera device found. Please connect a camera and try again.");
+    } else if (err.name === "OverconstrainedError") {
+        alert("Camera constraints could not be satisfied. Please check your device settings.");
+    } else {
+        alert("An unknown error occurred while accessing the camera.");
+    }
+    console.error("Camera Error:", err);
 }
 
 // Flip Camera
