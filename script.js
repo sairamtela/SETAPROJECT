@@ -5,20 +5,22 @@ const outputDiv = document.getElementById('outputAttributes');
 
 let currentFacingMode = "environment";
 let stream = null;
-let extractedData = "";
 
 // Start Camera
 async function startCamera() {
     try {
-        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (stream) {
+            // Stop previous stream
+            stream.getTracks().forEach(track => track.stop());
+        }
         stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+            video: { facingMode: currentFacingMode }
         });
         video.srcObject = stream;
         video.play();
     } catch (err) {
-        alert("Camera access denied or unavailable.");
-        console.error(err);
+        console.error("Error accessing camera:", err);
+        alert("Unable to access the camera. Please check your browser settings.");
     }
 }
 
@@ -49,8 +51,7 @@ async function processImage(img) {
         const result = await Tesseract.recognize(img, 'eng', { logger: m => console.log(m) });
         if (result && result.data.text) {
             console.log("OCR Result:", result.data.text);
-            extractedData = result.data.text;
-            displayData();
+            displayData(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
         }
@@ -60,10 +61,10 @@ async function processImage(img) {
     }
 }
 
-// Display Data
-function displayData() {
-    outputDiv.innerHTML = `<p><strong>Extracted Text:</strong></p><pre>${extractedData}</pre>`;
+// Display Extracted Data
+function displayData(text) {
+    outputDiv.innerHTML = `<p><strong>Extracted Text:</strong></p><pre>${text}</pre>`;
 }
 
-// Start Camera on Load
+// Start Camera on Page Load
 startCamera();
