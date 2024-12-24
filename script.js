@@ -1,3 +1,5 @@
+// Updated JavaScript Code for Frontend
+
 const keywords = [
     "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
     "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
@@ -79,6 +81,7 @@ async function processImage(imageDataURL) {
         const result = await Tesseract.recognize(imageDataURL, 'eng', { logger: m => console.log(m) });
 
         if (result && result.data.text) {
+            console.log("Extracted Text:", result.data.text); // Debug log
             processTextToAttributes(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
@@ -90,11 +93,12 @@ async function processImage(imageDataURL) {
 }
 
 // Map Extracted Text to Keywords
-function processTextToAttributes(text) {
+async function processTextToAttributes(text) {
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     extractedData = {};
     const otherSpecifications = [];
 
+    // Map extracted text to predefined keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
@@ -116,7 +120,12 @@ function processTextToAttributes(text) {
 
     extractedData["Other Specifications"] = otherSpecifications.join(" ");
     displayData();
-    sendToSalesforce(extractedData); // Automatically send to Salesforce after extraction
+
+    // Check if extracted data has content and send to backend
+    if (Object.keys(extractedData).length > 0) {
+        console.log("Extracted Data:", extractedData); // Debug log
+        await sendToSalesforce(extractedData);
+    }
 }
 
 // Display Extracted Data
@@ -131,6 +140,7 @@ function displayData() {
 
 // Send Extracted Data to Salesforce
 async function sendToSalesforce(data) {
+    // Prepare the payload for Salesforce
     const payload = {
         Product_Name__c: data['Product name'] || "",
         Colour__c: data['Colour'] || "",
