@@ -22,6 +22,7 @@ const outputDiv = document.getElementById('outputAttributes');
 
 // Start Camera
 async function startCamera() {
+    console.log("Starting camera...");
     try {
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
@@ -38,6 +39,7 @@ async function startCamera() {
 
         video.srcObject = stream;
         video.play();
+        console.log("Camera started successfully.");
     } catch (err) {
         handleCameraError(err);
     }
@@ -56,18 +58,21 @@ function handleCameraError(err) {
 
 // Flip Camera
 document.getElementById('flipButton').addEventListener('click', () => {
+    console.log("Flipping camera...");
     currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
     startCamera();
 });
 
 // Capture Image and Process
 document.getElementById('captureButton').addEventListener('click', () => {
+    console.log("Capturing image...");
     const context = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const imgDataURL = canvas.toDataURL("image/png");
+    console.log("Image captured successfully.");
     processImage(imgDataURL);
 });
 
@@ -75,14 +80,16 @@ document.getElementById('captureButton').addEventListener('click', () => {
 async function processImage(imageDataURL) {
     try {
         outputDiv.innerHTML = "<p>Processing...</p>";
+        console.log("Starting OCR with Tesseract.js...");
 
         const result = await Tesseract.recognize(imageDataURL, 'eng', { logger: m => console.log(m) });
 
         if (result && result.data.text) {
-            console.log("Extracted Text:", result.data.text); // Debug log
+            console.log("OCR completed. Extracted text:", result.data.text);
             processTextToAttributes(result.data.text);
         } else {
             outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+            console.warn("No text detected in the image.");
         }
     } catch (error) {
         alert("Error processing the image. Please try again.");
@@ -92,11 +99,11 @@ async function processImage(imageDataURL) {
 
 // Map Extracted Text to Keywords
 async function processTextToAttributes(text) {
+    console.log("Mapping extracted text to keywords...");
     const lines = text.split("\n").map(line => line.trim()).filter(line => line);
     extractedData = {};
     const otherSpecifications = [];
 
-    // Map extracted text to predefined keywords
     keywords.forEach(keyword => {
         for (let line of lines) {
             if (line.toLowerCase().includes(keyword.toLowerCase())) {
@@ -109,7 +116,6 @@ async function processTextToAttributes(text) {
         }
     });
 
-    // Capture unmatched lines
     lines.forEach(line => {
         if (!Object.values(extractedData).some(value => line.includes(value))) {
             otherSpecifications.push(line);
@@ -119,10 +125,11 @@ async function processTextToAttributes(text) {
     extractedData["Other Specifications"] = otherSpecifications.join(" ");
     displayData();
 
-    // Check if extracted data has content and send to backend
     if (Object.keys(extractedData).length > 0) {
-        console.log("Extracted Data:", extractedData); // Debug log
+        console.log("Extracted Data:", extractedData);
         await sendToSalesforce(extractedData);
+    } else {
+        console.warn("No meaningful data extracted.");
     }
 }
 
@@ -138,7 +145,6 @@ function displayData() {
 
 // Send Extracted Data to Salesforce
 async function sendToSalesforce(data) {
-    // Prepare the payload for Salesforce
     const payload = {
         Product_Name__c: data['Product name'] || "",
         Colour__c: data['Colour'] || "",
@@ -149,7 +155,7 @@ async function sendToSalesforce(data) {
         Other_Specifications__c: data['Other Specifications'] || ""
     };
 
-    console.log("Sending payload to backend:", payload); // Debug log
+    console.log("Sending payload to backend:", payload);
 
     try {
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
@@ -160,16 +166,16 @@ async function sendToSalesforce(data) {
             body: JSON.stringify(payload),
         });
 
-        console.log("Fetch response:", response); // Debug response
+        console.log("Fetch response:", response);
 
         const result = await response.json();
-        console.log("Backend result:", result); // Debug backend result
+        console.log("Backend result:", result);
 
         if (response.ok) {
             alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
             alert(`Error creating record in Salesforce: ${result.error}`);
-            console.error("Error from backend:", result.error);
+            console.error("Backend error:", result.error);
         }
     } catch (error) {
         console.error("Error exporting data to Salesforce:", error);
