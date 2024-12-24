@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from simple_salesforce import Salesforce
 import logging
 
@@ -7,6 +8,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)  # Enable CORS for frontend-backend communication
 
 # Salesforce credentials
 SF_USERNAME = 'sairamtelagamsetti@sathkrutha.sandbox'
@@ -25,12 +27,12 @@ except Exception as e:
 def create_record():
     """API endpoint to create a record in Salesforce."""
     if sf is None:
+        logging.error("Salesforce service is not initialized.")
         return jsonify({"error": "Salesforce service is not initialized"}), 500
 
     data = request.json
-    logging.info(f"Received payload: {data}")  # Debug log
+    logging.info(f"Received payload: {data}")
 
-    # Check if the payload has meaningful content
     if len(data) > 0:
         try:
             record = {
@@ -42,14 +44,15 @@ def create_record():
                 'Ratio__c': data.get('Ratio__c', ''),
                 'Other_Specifications__c': data.get('Other_Specifications__c', '')
             }
-
+            logging.info(f"Creating record in Salesforce with data: {record}")
             result = sf.SETA_Invoice__c.create(record)
-            logging.info(f"Created record in Salesforce: {result}")
+            logging.info(f"Record created successfully in Salesforce. ID: {result['id']}")
             return jsonify({"record_id": result['id']}), 201
         except Exception as e:
-            logging.error(f"Error creating record: {e}")
+            logging.error(f"Error creating record in Salesforce: {e}")
             return jsonify({"error": str(e)}), 500
     else:
+        logging.error("Payload is empty.")
         return jsonify({"error": "Payload is empty"}), 400
 
 if __name__ == '__main__':
