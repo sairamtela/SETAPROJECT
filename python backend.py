@@ -28,23 +28,29 @@ def create_record():
         return jsonify({"error": "Salesforce service is not initialized"}), 500
 
     data = request.json
-    try:
-        record = {
-            'Product_Name__c': data.get('Product_Name__c', ''),
-            'Colour__c': data.get('Colour__c', ''),
-            'Motor_Type__c': data.get('Motor_Type__c', ''),
-            'Frequency__c': data.get('Frequency__c', ''),
-            'Gross_Weight__c': data.get('Gross_Weight__c', ''),
-            'Ratio__c': data.get('Ratio__c', ''),
-            'Other_Specifications__c': data.get('Other_Specifications__c', '')
-        }
+    logging.info(f"Received payload: {data}")  # Debug log
 
-        result = sf.SETA_Invoice__c.create(record)
-        logging.info(f"Created record in Salesforce: {result}")
-        return jsonify({"record_id": result['id']}), 201
-    except Exception as e:
-        logging.error(f"Error creating record: {e}")
-        return jsonify({"error": str(e)}), 500
+    # Check if the payload has meaningful content
+    if len(data) > 0:
+        try:
+            record = {
+                'Product_Name__c': data.get('Product_Name__c', ''),
+                'Colour__c': data.get('Colour__c', ''),
+                'Motor_Type__c': data.get('Motor_Type__c', ''),
+                'Frequency__c': data.get('Frequency__c', ''),
+                'Gross_Weight__c': data.get('Gross_Weight__c', ''),
+                'Ratio__c': data.get('Ratio__c', ''),
+                'Other_Specifications__c': data.get('Other_Specifications__c', '')
+            }
+
+            result = sf.SETA_Invoice__c.create(record)
+            logging.info(f"Created record in Salesforce: {result}")
+            return jsonify({"record_id": result['id']}), 201
+        except Exception as e:
+            logging.error(f"Error creating record: {e}")
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Payload is empty"}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
