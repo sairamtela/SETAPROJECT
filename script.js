@@ -1,5 +1,3 @@
-// Updated JavaScript Code for Frontend
-
 const keywords = [
     "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
     "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
@@ -151,15 +149,16 @@ async function sendToSalesforce(data) {
         Other_Specifications__c: data['Other Specifications'] || ""
     };
 
-        try {
-            const response = await fetch('http://your-backend-server:5000/export_to_salesforce', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-    });
-       const result = await response.json();
+    try {
+        const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
         if (response.ok) {
             alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
