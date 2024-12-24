@@ -36,22 +36,7 @@ def create_record():
             'Frequency__c': data.get('Frequency__c', ''),
             'Gross_Weight__c': data.get('Gross_Weight__c', ''),
             'Ratio__c': data.get('Ratio__c', ''),
-            'Motor_Frame__c': data.get('Motor_Frame__c', ''),
-            'Model__c': data.get('Model__c', ''),
-            'Speed__c': data.get('Speed__c', ''),
-            'Quantity__c': data.get('Quantity__c', ''),
-            'Voltage__c': data.get('Voltage__c', ''),
-            'Material__c': data.get('Material__c', ''),
-            'Type__c': data.get('Type__c', ''),
-            'Horse_Power__c': data.get('Horse_Power__c', ''),
-            'Consignee__c': data.get('Consignee__c', ''),
-            'LOT__c': data.get('LOT__c', ''),
-            'Stage__c': data.get('Stage__c', ''),
-            'Outlet__c': data.get('Outlet__c', ''),
-            'Serial_Number__c': data.get('Serial_Number__c', ''),
-            'Other_Specifications__c': data.get('Other_Specifications__c', ''),
-            'Total_Amount__c': data.get('Total_Amount__c', ''),
-            'GSTIN__c': data.get('GSTIN__c', '')
+            'Other_Specifications__c': data.get('Other_Specifications__c', '')
         }
 
         result = sf.SETA_Invoice__c.create(record)
@@ -63,4 +48,3 @@ def create_record():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
