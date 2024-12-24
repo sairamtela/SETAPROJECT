@@ -1,4 +1,125 @@
-// After data extraction, automatically store the record in Salesforce
+const keywords = [
+    "Product name", "Colour", "Motor type", "Frequency", "Gross weight", "Ratio",
+    "Motor Frame", "Model", "Speed", "Quantity", "Voltage", "Material", "Type",
+    "Horse power", "Consignee", "LOT", "Stage", "Outlet", "Serial number", "Head Size",
+    "Delivery size", "Phase", "Size", "MRP", "Use before", "Height",
+    "Maximum Discharge Flow", "Discharge Range", "Assembled by", "Manufacture date",
+    "Company name", "Customer care number", "Seller Address", "Seller email", "GSTIN",
+    "Total amount", "Payment status", "Payment method", "Invoice date", "Warranty", 
+    "Brand", "Motor horsepower", "Power", "Motor phase", "Engine type", "Tank capacity",
+    "Head", "Usage/Application", "Weight", "Volts", "Hertz", "Frame", "Mounting", "Toll free number",
+    "Pipesize", "Manufacturer", "Office", "SR number", "RPM"
+];
+
+let currentFacingMode = "environment";
+let stream = null;
+let extractedData = {};
+
+// Elements
+const video = document.getElementById('camera');
+const canvas = document.getElementById('canvas');
+const outputDiv = document.getElementById('outputAttributes');
+
+// Start Camera
+async function startCamera() {
+    try {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints = {
+            video: { facingMode: currentFacingMode, width: 1280, height: 720 }
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
+            console.warn("Facing mode unsupported. Trying default video device.", err);
+            return navigator.mediaDevices.getUserMedia({ video: true });
+        });
+
+        video.srcObject = stream;
+        video.play();
+    } catch (err) {
+        handleCameraError(err);
+    }
+}
+
+// Handle Camera Errors
+function handleCameraError(err) {
+    const errorMessages = {
+        NotAllowedError: "Camera access denied. Please allow camera access in your browser settings.",
+        NotFoundError: "No camera device found. Connect a camera and try again.",
+        OverconstrainedError: "The requested camera constraints could not be satisfied. Check your device settings."
+    };
+    alert(errorMessages[err.name] || "An unknown error occurred while accessing the camera.");
+    console.error("Camera error:", err);
+}
+
+// Flip Camera
+document.getElementById('flipButton').addEventListener('click', () => {
+    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+    startCamera();
+});
+
+// Capture Image and Process
+document.getElementById('captureButton').addEventListener('click', () => {
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imgDataURL = canvas.toDataURL("image/png");
+    processImage(imgDataURL);
+});
+
+// Process Image with Tesseract.js
+async function processImage(imageDataURL) {
+    try {
+        outputDiv.innerHTML = "<p>Processing...</p>";
+
+        const result = await Tesseract.recognize(imageDataURL, 'eng', { logger: m => console.log(m) });
+
+        if (result && result.data.text) {
+            processTextToAttributes(result.data.text);
+        } else {
+            outputDiv.innerHTML = "<p>No text detected. Please try again.</p>";
+        }
+    } catch (error) {
+        alert("Error processing the image. Please try again.");
+        console.error("Tesseract.js Error:", error);
+    }
+}
+
+// Map Extracted Text to Keywords
+function processTextToAttributes(text) {
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
+    extractedData = {};
+    const otherSpecifications = [];
+
+    keywords.forEach(keyword => {
+        for (let line of lines) {
+            if (line.toLowerCase().includes(keyword.toLowerCase())) {
+                const value = line.split(/[:\-]/)[1]?.trim() || "-";
+                if (value !== "-") {
+                    extractedData[keyword] = value;
+                }
+                break;
+            }
+        }
+    });
+
+    // Capture unmatched lines
+    lines.forEach(line => {
+        if (!Object.values(extractedData).some(value => line.includes(value))) {
+            otherSpecifications.push(line);
+        }
+    });
+
+    extractedData["Other Specifications"] = otherSpecifications.join(" ");
+    displayData();
+    sendToSalesforce(extractedData); // Automatically send to Salesforce after extraction
+}
+
+// Display Extracted Data
 function displayData() {
     outputDiv.innerHTML = "";
     Object.entries(extractedData).forEach(([key, value]) => {
@@ -6,9 +127,6 @@ function displayData() {
             outputDiv.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
         }
     });
-
-    // Automatically send the extracted data to the backend
-    sendToSalesforce(extractedData);
 }
 
 // Send Extracted Data to Salesforce
@@ -20,22 +138,7 @@ async function sendToSalesforce(data) {
         Frequency__c: data['Frequency'] || "",
         Gross_Weight__c: data['Gross weight'] || "",
         Ratio__c: data['Ratio'] || "",
-        Motor_Frame__c: data['Motor Frame'] || "",
-        Model__c: data['Model'] || "",
-        Speed__c: data['Speed'] || "",
-        Quantity__c: data['Quantity'] || "",
-        Voltage__c: data['Voltage'] || "",
-        Material__c: data['Material'] || "",
-        Type__c: data['Type'] || "",
-        Horse_Power__c: data['Horse power'] || "",
-        Consignee__c: data['Consignee'] || "",
-        LOT__c: data['LOT'] || "",
-        Stage__c: data['Stage'] || "",
-        Outlet__c: data['Outlet'] || "",
-        Serial_Number__c: data['Serial number'] || "",
-        Other_Specifications__c: data['Other Specifications'] || "",
-        Total_Amount__c: data['Total amount'] || "",
-        GSTIN__c: data['GSTIN'] || ""
+        Other_Specifications__c: data['Other Specifications'] || ""
     };
 
     try {
