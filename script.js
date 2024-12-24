@@ -149,6 +149,8 @@ async function sendToSalesforce(data) {
         Other_Specifications__c: data['Other Specifications'] || ""
     };
 
+    console.log("Sending payload to backend:", payload); // Debug log
+
     try {
         const response = await fetch('http://127.0.0.1:5000/export_to_salesforce', {
             method: 'POST',
@@ -158,11 +160,16 @@ async function sendToSalesforce(data) {
             body: JSON.stringify(payload),
         });
 
+        console.log("Fetch response:", response); // Debug response
+
         const result = await response.json();
+        console.log("Backend result:", result); // Debug backend result
+
         if (response.ok) {
             alert(`Record created successfully in Salesforce. Record ID: ${result.record_id}`);
         } else {
             alert(`Error creating record in Salesforce: ${result.error}`);
+            console.error("Error from backend:", result.error);
         }
     } catch (error) {
         console.error("Error exporting data to Salesforce:", error);
